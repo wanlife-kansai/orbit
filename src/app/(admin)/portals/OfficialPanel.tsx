@@ -1,5 +1,7 @@
 "use client";
-import { useActionState } from "react";
+import { useActionState, useRef, useState } from "react";
+import { ApiKeyField } from "./ApiKeyField";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { importOfficial, saveOfficial, testOfficial, type Msg } from "./actions";
 
 const init: Msg = { ok: true, message: "", n: 0 };
@@ -13,6 +15,9 @@ export function OfficialPanel({ url, hasKey, linked, lastCheck }: { url: string;
   const [saveMsg, save, saving] = useActionState(saveOfficial, init);
   const [testMsg, test, testing] = useActionState(testOfficial, init);
   const [impMsg, imp, importing] = useActionState(importOfficial, init);
+  const form = useRef<HTMLFormElement>(null);
+  const ok = useRef(false);
+  const [ask, setAsk] = useState(false);
 
   return (
     <section className="card p-5">
@@ -37,20 +42,36 @@ export function OfficialPanel({ url, hasKey, linked, lastCheck }: { url: string;
         </div>
       </div>
 
-      <form action={save} className="mt-4 grid gap-3 md:grid-cols-[1fr_1fr_auto]">
+      <form
+        ref={form}
+        action={save}
+        onSubmit={(e) => {
+          if (ok.current) { ok.current = false; return; }
+          e.preventDefault();
+          setAsk(true);
+        }}
+        className="mt-4 grid gap-3 md:grid-cols-[1fr_1fr_auto]"
+      >
         <div>
           <label className="label">公式サイトのURL</label>
           <input name="url" defaultValue={url} placeholder="https://biollante-osaka.com" className="input w-full" />
         </div>
         <div>
           <label className="label">APIキー（公式サイトの OFFICIAL_API_KEY と同じもの）</label>
-          <input name="key" type="password" autoComplete="off" placeholder={hasKey ? "保存済み（変えるときだけ入力）" : "24文字以上"} className="input w-full" />
+          <ApiKeyField name="key" hasKey={hasKey} />
         </div>
-        <div className="flex items-end">
+        <div className="flex items-start pt-5">
           <button disabled={saving} className="btn-primary w-full">{saving ? "保存中…" : "保存して接続テスト"}</button>
         </div>
       </form>
       <Note m={saveMsg} />
+      <ConfirmDialog
+        open={ask}
+        title="保存しますか？"
+        message="公式サイトのURL・APIキーを保存して、接続テストをします。"
+        onNo={() => setAsk(false)}
+        onYes={() => { setAsk(false); ok.current = true; form.current?.requestSubmit(); }}
+      />
 
       <div className="mt-5 flex flex-wrap items-start gap-6 border-t border-zinc-800 pt-5">
         <form action={test}>

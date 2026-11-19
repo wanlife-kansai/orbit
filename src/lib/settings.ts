@@ -49,6 +49,8 @@ export type ShopSettings = {
   aiMonthlyLimit: number;
   // 無料サイト申込：サイト名 → メモ
   freeSiteMemos: Record<string, string>;
+  // 登録したAPIキー（暗号化して保存。公式サイト連携の入力欄から呼び出す）
+  apiKeys: { id: string; label: string; enc: string; last4: string; createdAt: string }[];
 };
 
 export const DEFAULT_SETTINGS: ShopSettings = {
@@ -81,6 +83,7 @@ export const DEFAULT_SETTINGS: ShopSettings = {
   diary: { running: false, sourceSite: "", sourceUrl: "", footer: "", fromEmail: "", targets: [], excludedCasts: [] },
   aiMonthlyLimit: 50,
   freeSiteMemos: {},
+  apiKeys: [],
 };
 
 export function mergeSettings(raw: Record<string, unknown> | null | undefined): ShopSettings {
