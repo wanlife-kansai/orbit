@@ -3,6 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { Logo } from "@/components/Logo";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 type Item = { href: string; label: string; soon?: boolean };
 const GROUPS: { title: string; items: Item[] }[] = [
@@ -79,6 +80,7 @@ export function Sidebar({ shopName, shopCode }: { shopName: string; shopCode: st
     <>
       <div className="md:hidden sticky top-0 z-30 flex items-center justify-between bg-zinc-900 px-4 py-3 ring-1 ring-zinc-800">
         <Logo size={22} />
+        <ThemeToggle className="ml-auto mr-2" />
         <button className="btn" onClick={() => setOpen(!open)} aria-label="メニュー">
           {open ? "閉じる" : "メニュー"}
         </button>
@@ -86,8 +88,9 @@ export function Sidebar({ shopName, shopCode }: { shopName: string; shopCode: st
       <aside
         className={`${open ? "block" : "hidden"} md:block md:sticky md:top-0 md:h-screen w-full md:w-56 shrink-0 overflow-y-auto bg-zinc-900 ring-1 ring-zinc-800`}
       >
-        <div className="hidden md:block px-4 pt-5">
+        <div className="hidden md:flex items-center justify-between px-4 pt-5">
           <Logo size={24} />
+          <ThemeToggle />
         </div>
         <div className="mx-3 mt-4 rounded-lg bg-zinc-800/60 px-3 py-2.5 ring-1 ring-zinc-700/60">
           <div className="text-sm font-semibold">{shopName} 様</div>
