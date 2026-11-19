@@ -71,3 +71,27 @@ export async function saveTargetSites(codes: string[]) {
     .where(eq(schema.shops.id, SHOP_ID));
   revalidatePath("/", "layout");
 }
+
+/** ポータル（風俗DXなど）のログインID・パスワードを保存して接続テスト */
+export async function savePortalAccount(portalId: number, prev: Msg, fd: FormData): Promise<Msg> {
+  const loginId = String(fd.get("loginId") ?? "").trim();
+  const password = String(fd.get("password") ?? "");
+  if (!loginId) return { ok: false, message: "ログインIDを入力してください", n: prev.n + 1 };
+  const set: Partial<typeof schema.shopPortalAccounts.$inferInsert> = { loginId };
+  if (password) {
+    try {
+      set.passwordEnc = encrypt(password);
+    } catch (e) {
+      return { ok: false, message: e instanceof Error ? e.message : "暗号化できませんでした", n: prev.n + 1 };
+    }
+  }
+  await db
+    .insert(schema.shopPortalAccounts)
+    .values({ shopId: SHOP_ID, portalId, loginId, passwordEnc: set.passwordEnc ?? "" })
+    .onConflictDoUpdate({ target: [schema.shopPortalAccounts.shopId, schema.shopPortalAccounts.portalId], set });
+  const { testDx } = await import("@/lib/portals/dx");
+  const t = await testDx();
+  await recordCheck(portalId, t.ok, t.message);
+  revalidatePath("/portals");
+  return { ok: t.ok, message: t.ok ? `保存しました。風俗DXにログインできました（お店速報 ${t.data}件）` : `保存しました。${t.message}`, n: prev.n + 1 };
+}

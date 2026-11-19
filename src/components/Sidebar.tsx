@@ -28,7 +28,7 @@ const GROUPS: { title: string; items: Item[] }[] = [
     items: [
       { href: "/templates", label: "テンプレート" },
       { href: "/portals", label: "連携ポータル" },
-      { href: "#", label: "コンテンツ更新", soon: true },
+      { href: "/contents", label: "コンテンツ更新" },
       { href: "#", label: "一括投稿", soon: true },
       { href: "/logs", label: "配信ログ" },
     ],

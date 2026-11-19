@@ -5,6 +5,7 @@ import { SHOP_ID } from "@/lib/shop";
 import { getOfficialPortal, linkedCount } from "@/lib/official";
 import { OfficialPanel } from "./OfficialPanel";
 import { TargetSites } from "./TargetSites";
+import { PortalAccount } from "./PortalAccount";
 import { getShop } from "@/lib/shop";
 import { targetSitesOf } from "@/lib/targets";
 
@@ -18,12 +19,13 @@ export default async function PortalsPage() {
         .where(and(eq(schema.shopPortalAccounts.shopId, SHOP_ID), eq(schema.shopPortalAccounts.portalId, official.id)))
     : [];
   const linked = await linkedCount();
+  const accounts = await db.select().from(schema.shopPortalAccounts).where(eq(schema.shopPortalAccounts.shopId, SHOP_ID));
   const shop = await getShop();
   const slots = await db.select().from(schema.portalSlots).orderBy(asc(schema.portalSlots.id));
 
   return (
     <>
-      <PageHeader title="連携ポータル" desc="公式サイトにはAPIで、ポータルにはロボットで配信します。ポータルの接続はこの次につなぎます。" />
+      <PageHeader title="連携ポータル" desc="公式サイトにはAPIで、ポータルには管理画面への自動ログインで配信します。" />
       <div className="space-y-4">
         <OfficialPanel url={acc?.loginId ?? ""} hasKey={!!acc?.passwordEnc} linked={linked} lastCheck={acc?.lastCheckResult ?? ""} />
         <TargetSites initial={targetSitesOf(shop)} />
@@ -38,7 +40,7 @@ export default async function PortalsPage() {
                 {p.supports.map((s) => (
                   <span key={s} className="badge text-violet-300 ring-violet-800">{s}</span>
                 ))}
-                <span className="badge text-amber-300 ring-amber-800">テスト用・未接続</span>
+                <span className="badge text-sky-300 ring-sky-800">テスト用</span>
               </div>
             </div>
             <table className="mt-4 w-full">
@@ -63,11 +65,10 @@ export default async function PortalsPage() {
                   ))}
               </tbody>
             </table>
-            <div className="mt-4 grid gap-2 md:grid-cols-[1fr_1fr_auto] opacity-50">
-              <input disabled placeholder="ログインID" className="input" />
-              <input disabled placeholder="パスワード（暗号化して保存）" className="input" />
-              <button disabled className="btn">接続テスト</button>
-            </div>
+            {(() => {
+              const a = accounts.find((x) => x.portalId === p.id);
+              return <PortalAccount portalId={p.id} loginId={a?.loginId ?? ""} hasPassword={!!a?.passwordEnc} lastCheck={a?.lastCheckResult ?? ""} />;
+            })()}
           </section>
         ))}
       </div>
