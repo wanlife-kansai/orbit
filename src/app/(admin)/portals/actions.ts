@@ -1,0 +1,73 @@
+"use server";
+import { revalidatePath } from "next/cache";
+import { db, schema } from "@/db";
+import { SHOP_ID } from "@/lib/shop";
+import { encrypt } from "@/lib/secret";
+import { getOfficialPortal, importFromOfficial, resetLinks, testConnection } from "@/lib/official";
+import { and, eq } from "drizzle-orm";
+
+export type Msg = { ok: boolean; message: string; n: number };
+
+export async function saveOfficial(prev: Msg, fd: FormData): Promise<Msg> {
+  const portal = await getOfficialPortal();
+  if (!portal) return { ok: false, message: "公式サイトの設定がありません（npm run setup を実行してください）", n: prev.n + 1 };
+  const url = String(fd.get("url") ?? "").trim().replace(/\/+$/, "");
+  const key = String(fd.get("key") ?? "").trim();
+  if (!/^https?:\/\/[^\s]+$/.test(url)) return { ok: false, message: "URLは https:// から入力してください", n: prev.n + 1 };
+  const set: Partial<typeof schema.shopPortalAccounts.$inferInsert> = { loginId: url };
+  if (key) {
+    if (key.length < 24) return { ok: false, message: "APIキーは24文字以上です", n: prev.n + 1 };
+    try {
+      set.passwordEnc = encrypt(key);
+    } catch (e) {
+      return { ok: false, message: e instanceof Error ? e.message : "暗号化できませんでした", n: prev.n + 1 };
+    }
+  }
+  const [before] = await db
+    .select()
+    .from(schema.shopPortalAccounts)
+    .where(and(eq(schema.shopPortalAccounts.shopId, SHOP_ID), eq(schema.shopPortalAccounts.portalId, portal.id)));
+  const urlChanged = !!before?.loginId && before.loginId !== url;
+  if (urlChanged) await resetLinks(portal.id); // 別のサイトにつなぎ替えたら、女性のつながりは作り直す
+  await db
+    .insert(schema.shopPortalAccounts)
+    .values({ shopId: SHOP_ID, portalId: portal.id, loginId: url, passwordEnc: set.passwordEnc ?? "" })
+    .onConflictDoUpdate({ target: [schema.shopPortalAccounts.shopId, schema.shopPortalAccounts.portalId], set });
+  revalidatePath("/portals");
+  const t = await testConnection();
+  await recordCheck(portal.id, t.ok, t.message);
+  const note = urlChanged ? "接続先が変わったので、女性のつながりをリセットしました。「公式サイトから取り込む」をやり直してください。" : "";
+  return { ...t, message: `保存しました。${t.message}${note ? ` ${note}` : ""}`, n: prev.n + 1 };
+}
+
+async function recordCheck(portalId: number, ok: boolean, message: string) {
+  const { and, eq, sql } = await import("drizzle-orm");
+  await db
+    .update(schema.shopPortalAccounts)
+    .set({ lastCheckAt: sql`now()`, lastCheckResult: ok ? "OK" : message })
+    .where(and(eq(schema.shopPortalAccounts.shopId, SHOP_ID), eq(schema.shopPortalAccounts.portalId, portalId)));
+}
+
+export async function testOfficial(prev: Msg): Promise<Msg> {
+  const t = await testConnection();
+  const portal = await getOfficialPortal();
+  if (portal) await recordCheck(portal.id, t.ok, t.message);
+  revalidatePath("/portals");
+  return { ...t, n: prev.n + 1 };
+}
+
+export async function importOfficial(prev: Msg, fd: FormData): Promise<Msg> {
+  const r = await importFromOfficial({ replaceAll: fd.get("replaceAll") === "on" });
+  revalidatePath("/", "layout");
+  return { ...r, n: prev.n + 1 };
+}
+
+export async function saveTargetSites(codes: string[]) {
+  const { SITES } = await import("@/lib/sites");
+  const known = new Set(SITES.map((s) => s.code));
+  await db
+    .update(schema.shops)
+    .set({ targetSites: codes.filter((c) => known.has(c)) })
+    .where(eq(schema.shops.id, SHOP_ID));
+  revalidatePath("/", "layout");
+}
