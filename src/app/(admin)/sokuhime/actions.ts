@@ -1,4 +1,5 @@
 "use server";
+import { patchSettings, type ShopSettings } from "@/lib/settings";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { deliverWait } from "@/lib/official";
@@ -23,4 +24,16 @@ export async function setStatus(castId: number, date: string, patch: Patch) {
   if (patch.status !== undefined || patch.until !== undefined || patch.excluded !== undefined) after(() => deliverWait(castId, date));
   revalidatePath("/sokuhime");
   revalidatePath("/");
+}
+
+export async function saveSokuhimeSettings(p: Pick<ShopSettings, "sokuhimeOrder" | "sokuhimeBatch" | "sokuhimePriority" | "sokuhimeIntervalMin" | "sokuhimeActive">) {
+  await patchSettings({
+    sokuhimeOrder: p.sokuhimeOrder === "random" ? "random" : "priority",
+    sokuhimeBatch: Math.min(5, Math.max(0, Math.round(p.sokuhimeBatch))),
+    sokuhimePriority: ["early", "late", "list"].includes(p.sokuhimePriority) ? p.sokuhimePriority : "early",
+    sokuhimeIntervalMin: Math.min(240, Math.max(10, Math.round(p.sokuhimeIntervalMin) || 30)),
+    sokuhimeActive: !!p.sokuhimeActive,
+  });
+  revalidatePath("/sokuhime");
+  return { ok: true, message: p.sokuhimeActive ? "自動更新の設定を保存しました" : "自動更新を止めました" };
 }

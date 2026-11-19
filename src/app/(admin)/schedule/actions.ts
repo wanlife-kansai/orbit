@@ -1,7 +1,7 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
-import { deliverSchedules } from "@/lib/official";
+import { autoDeliverSchedules as deliverSchedules } from "@/lib/official";
 import { and, eq, gte, lte, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { SHOP_ID } from "@/lib/shop";
@@ -30,7 +30,7 @@ export async function saveWeek(cells: Cell[]) {
       });
   }
   after(() => deliverSchedules(cells.map((c) => ({ castId: c.castId, date: c.date }))));
-  revalidatePath("/schedule");
+  revalidatePath("/schedule", "layout");
   revalidatePath("/");
   revalidatePath("/sokuhime");
 }
@@ -53,4 +53,45 @@ export async function copyPrevWeek(monday: string) {
   }
   after(() => deliverSchedules(copied));
   revalidatePath("/schedule");
+}
+
+type Base = Record<string, { start: string; end: string; off?: boolean }>;
+/** 基本出勤（曜日ごと）を保存 */
+export async function saveBaseSchedule(castId: number, base: Base) {
+  const clean: Base = {};
+  for (const [k, v] of Object.entries(base)) {
+    if (!/^[0-6]$/.test(k)) continue;
+    if (v.off) clean[k] = { start: "", end: "", off: true };
+    else if (TIME.test(v.start) && TIME.test(v.end)) clean[k] = { start: v.start, end: v.end };
+  }
+  await db.update(schema.casts).set({ baseSchedule: clean }).where(and(eq(schema.casts.id, castId), eq(schema.casts.shopId, SHOP_ID)));
+  revalidatePath("/schedule/month");
+  return { ok: true, message: "基本出勤を保存しました" };
+}
+
+/** 基本出勤を、指定した月の「未設定」の日に適用する */
+export async function applyBaseSchedule(castId: number, month: string, castIds?: number[]) {
+  const ids = castIds?.length ? castIds : [castId];
+  const [y, m] = month.split("-").map(Number);
+  const days = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const added: { castId: number; date: string }[] = [];
+  for (const id of ids) {
+    const [c] = await db.select({ base: schema.casts.baseSchedule }).from(schema.casts).where(and(eq(schema.casts.id, id), eq(schema.casts.shopId, SHOP_ID)));
+    if (!c) continue;
+    for (let d = 1; d <= days; d++) {
+      const date = `${month}-${String(d).padStart(2, "0")}`;
+      const b = c.base[String(new Date(date + "T00:00:00Z").getUTCDay())];
+      if (!b) continue;
+      const r = await db
+        .insert(schema.schedules)
+        .values({ shopId: SHOP_ID, castId: id, date, start: b.off ? "" : b.start, end: b.off ? "" : b.end, off: !!b.off })
+        .onConflictDoNothing()
+        .returning({ castId: schema.schedules.castId, date: schema.schedules.date });
+      added.push(...r);
+    }
+  }
+  after(() => deliverSchedules(added));
+  revalidatePath("/schedule/month");
+  revalidatePath("/schedule");
+  return { ok: true, message: `未設定の日 ${added.length}日分に基本出勤を入れました` };
 }

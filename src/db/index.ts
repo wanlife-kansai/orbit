@@ -4,7 +4,8 @@ import { drizzle as drizzleNeon } from "drizzle-orm/neon-http";
 import { neon } from "@neondatabase/serverless";
 import path from "node:path";
 import * as schema from "./schema";
-import { DDL } from "./ddl";
+import { DDL as DDL_BASE, DDL_SITES } from "./ddl";
+const DDL = DDL_BASE + "\n" + DDL_SITES + "\n";
 import { seedStatements, splitSql } from "./seed";
 
 // DATABASE_URL があれば Neon（本番）、なければ手元の .data フォルダのDB（開発用）を使います。

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { db, schema } from "@/db";
-import { and, count, eq } from "drizzle-orm";
+import { and, count, eq, gte } from "drizzle-orm";
 import { PageHeader } from "@/components/PageHeader";
 import { getShop, SHOP_ID } from "@/lib/shop";
 import { getTodayRoster } from "@/lib/queries";
@@ -32,7 +32,11 @@ export default async function Dashboard() {
   const [{ n: errorCount }] = await db
     .select({ n: count() })
     .from(schema.syncLogs)
-    .where(and(eq(schema.syncLogs.shopId, SHOP_ID), eq(schema.syncLogs.ok, false)));
+    .where(and(eq(schema.syncLogs.shopId, SHOP_ID), eq(schema.syncLogs.ok, false), gte(schema.syncLogs.createdAt, new Date(Date.now() - 86400_000))));
+  const [{ n: activeCount }] = await db
+    .select({ n: count() })
+    .from(schema.contents)
+    .where(and(eq(schema.contents.shopId, SHOP_ID), eq(schema.contents.active, true)));
 
   const working = roster.filter((r) => r.state === "working").length;
   const waiting = roster.filter((r) => r.status === "waiting").length;
@@ -40,15 +44,16 @@ export default async function Dashboard() {
   const cards = [
     { label: "出勤中", value: `${working}人`, sub: `本日の出勤 ${roster.length}人`, href: "/sokuhime", action: "即姫ボードへ" },
     { label: "女性", value: `${castCount}人`, sub: "登録中", href: "/casts", action: "女性一覧へ" },
-    { label: "連携先", value: `${portalCount}件`, sub: "公式サイト・ポータル", href: "/portals", action: "連携ポータルへ" },
-    { label: "配信エラー", value: `${errorCount}件`, sub: "これまでの合計", href: "/logs", action: "配信ログへ" },
+    { label: "連携先", value: `${portalCount}件`, sub: "公式サイト・ポータル", href: "/accounts", action: "ID・PASS登録へ" },
+    { label: "タイマー稼働", value: `${activeCount}件`, sub: "コンテンツ更新", href: "/contents", action: "コンテンツ更新へ" },
+    { label: "更新エラー", value: `${errorCount}件`, sub: "直近24時間", href: "/logs?e=1", action: "更新結果へ" },
   ];
 
   return (
     <>
-      <PageHeader title="ダッシュボード" desc={`営業日 ${labelMd(date)}（${shop.dayChangeHour}:00 切り替え）`} />
+      <PageHeader title="お知らせ" desc={`営業日 ${labelMd(date)}（${shop.dayChangeHour}:00 切り替え）`} />
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         {cards.map((c) => (
           <Link key={c.label} href={c.href} className="card p-4 hover:ring-violet-700">
             <div className="text-xs text-zinc-400">{c.label}</div>

@@ -28,6 +28,7 @@ export default async function EditTemplatePage({ params }: { params: Promise<{ i
           ))}
         </select>
         <textarea name="body" rows={8} defaultValue={t.body} className="input md:col-span-2" />
+        <input name="groupName" defaultValue={t.groupName} placeholder="グループ（任意）" className="input md:col-span-2" />
         <input name="memo" defaultValue={t.memo} placeholder="メモ（管理用）" className="input md:col-span-2" />
         <div>
           <button className="btn-primary">保存する</button>

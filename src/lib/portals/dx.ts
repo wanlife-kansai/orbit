@@ -18,17 +18,17 @@ async function account() {
     .select()
     .from(shopPortalAccounts)
     .where(and(eq(shopPortalAccounts.shopId, SHOP_ID), eq(shopPortalAccounts.portalId, p.id)));
-  if (!a?.loginId || !a.passwordEnc) throw new DxError("風俗DXのログインID・パスワードが未登録です（連携ポータルで登録してください）", "ログイン");
+  if (!a?.loginId || !a.passwordEnc) throw new DxError("風俗DXのログインID・パスワードが未登録です（ID・PASS登録で登録してください）", "ログイン");
   return { portal: p, loginId: a.loginId, password: decrypt(a.passwordEnc) };
 }
 
 async function log(portalId: number, ok: boolean, message: string, kind = "") {
-  await db.insert(syncLogs).values({ shopId: SHOP_ID, portalId, ok, errorKind: ok ? "" : kind, message });
+  await db.insert(syncLogs).values({ shopId: SHOP_ID, portalId, ok, errorKind: ok ? "" : kind, message, category: message.includes("接続テスト") ? "" : "content" });
 }
 
 /** ログインして処理し、結果を配信ログに残す */
 async function withDx<T>(what: string, fn: (dx: FuzokuDx) => Promise<T>, logSuccess = true): Promise<{ ok: true; data: T; message: string } | { ok: false; message: string }> {
-  let portalId = 0;
+  let portalId = (await dxPortal())?.id ?? 0;
   try {
     const a = await account();
     portalId = a.portal.id;

@@ -6,42 +6,72 @@ import { Logo } from "@/components/Logo";
 
 type Item = { href: string; label: string; soon?: boolean };
 const GROUPS: { title: string; items: Item[] }[] = [
-  { title: "", items: [{ href: "/", label: "ダッシュボード" }] },
+  { title: "", items: [{ href: "/", label: "お知らせ" }] },
+  {
+    title: "連携",
+    items: [
+      { href: "/accounts", label: "ID・PASS登録" },
+      { href: "/portals", label: "公式サイト連携" },
+    ],
+  },
+  {
+    title: "コンテンツ",
+    items: [
+      { href: "/contents", label: "コンテンツ更新" },
+      { href: "/templates", label: "テンプレート" },
+      { href: "/bulk", label: "簡単一括更新" },
+      { href: "/sokuhime", label: "即姫・接客一括更新" },
+      { href: "/diary", label: "写メ日記転送" },
+    ],
+  },
   {
     title: "女性",
     items: [
       { href: "/casts", label: "女性一覧" },
       { href: "/casts/new", label: "女性を登録" },
       { href: "/casts/sort", label: "並び替え" },
+      { href: "/casts/status", label: "女性登録状況一覧" },
       { href: "/casts/aliases", label: "別名管理" },
     ],
   },
   {
-    title: "出勤",
+    title: "AI自動生成",
     items: [
-      { href: "/schedule", label: "週間スケジュール" },
-      { href: "/sokuhime", label: "即姫・接客ボード" },
+      { href: "/ai/comments", label: "コメント生成" },
+      { href: "/ai/movies", label: "動画生成" },
     ],
   },
   {
-    title: "配信",
+    title: "スケジュール",
     items: [
-      { href: "/templates", label: "テンプレート" },
-      { href: "/portals", label: "連携ポータル" },
-      { href: "/contents", label: "コンテンツ更新" },
-      { href: "#", label: "一括投稿", soon: true },
-      { href: "/logs", label: "配信ログ" },
+      { href: "/schedule", label: "週間スケジュール" },
+      { href: "/schedule/day", label: "当日スケジュール" },
+      { href: "/schedule/month", label: "月間スケジュール" },
     ],
   },
-  { title: "自店HP", items: [{ href: "#", label: "サイト設定", soon: true }] },
-  { title: "AI", items: [{ href: "#", label: "コメント生成", soon: true }] },
-  { title: "", items: [{ href: "/settings", label: "店舗設定" }] },
+  {
+    title: "サイトへ更新",
+    items: [
+      { href: "/push/schedule", label: "出勤情報をサイトへ更新" },
+      { href: "/push/casts", label: "女性をサイトへ更新" },
+      { href: "/push/delete", label: "女性をサイトから削除" },
+    ],
+  },
+  { title: "", items: [{ href: "/logs", label: "更新結果" }] },
+  {
+    title: "",
+    items: [
+      { href: "/settings", label: "設定" },
+      { href: "/help", label: "操作説明Q&A" },
+      { href: "/inquiry", label: "お問合せ" },
+    ],
+  },
 ];
 
 export function Sidebar({ shopName, shopCode }: { shopName: string; shopCode: string }) {
   const path = usePathname();
   const [open, setOpen] = useState(false);
-  const SUB = ["/casts/new", "/casts/sort", "/casts/aliases"];
+  const SUB = ["/casts/new", "/casts/sort", "/casts/aliases", "/casts/status", "/schedule/day", "/schedule/month"];
   const isActive = (href: string) =>
     href === "/" ? path === "/" : path === href || (!SUB.includes(href) && path.startsWith(href + "/") && !SUB.some((x) => path.startsWith(x)));
 

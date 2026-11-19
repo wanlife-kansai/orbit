@@ -47,7 +47,10 @@ export const SITES: { code: string; name: string; note?: string }[] = [
   { code: "fuzoku_japan", name: "風俗じゃぱん！" },
   { code: "yorudeli", name: "夜デリ" },
 ];
-export const siteName = (code: string) => SITES.find((s) => s.code === code)?.name ?? code;
+import { EXTRA_SITES } from "./contentCatalog";
+/** 求人サイトなども含めた全サイト（ID・PASS登録・コンテンツ更新で使う） */
+export const ALL_SITES: { code: string; name: string; note?: string }[] = [...SITES, ...EXTRA_SITES];
+export const siteName = (code: string) => ALL_SITES.find((s) => s.code === code)?.name ?? code;
 
 /** Q&A をサイト別に持てるサイト */
 export const QA_SITES = ["deli_town", "kuchikomi", "cityheaven", "deli_japan", "manzoku", "ekichika", "fuzokudx", "fuzoku_japan"];

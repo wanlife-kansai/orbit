@@ -4,7 +4,7 @@ import { after } from "next/server";
 import { and, asc, eq, max, ne } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { SHOP_ID } from "@/lib/shop";
-import { deliverCast } from "@/lib/official";
+import { autoDeliverCast as deliverCast } from "@/lib/official";
 import { COMMENT_MAX, CUPS, QA_MAX, QA_Q_MAX, TEXT_MAX } from "@/lib/castFields";
 import type { CastInput } from "./types";
 

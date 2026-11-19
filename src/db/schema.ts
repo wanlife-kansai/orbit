@@ -20,6 +20,8 @@ export const shops = pgTable("shops", {
   memo: text("memo").notNull().default(""),
   // 女性編集の「各サイト項目」・必須項目チェッカーに出す連動先サイト（sites.ts の code）
   targetSites: jsonb("target_sites").$type<string[]>().notNull().default([]),
+  // 設定画面（基本・出勤・女性・即姫・その他）の内容。型は lib/settings.ts
+  settings: jsonb("settings").$type<Record<string, unknown>>().notNull().default({}),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -78,6 +80,10 @@ export const casts = pgTable("casts", {
   prItems: jsonb("pr_items").$type<PrItem[]>().notNull().default([]),
   tags: jsonb("tags").$type<string[]>().notNull().default([]),
   sortOrder: integer("sort_order").notNull().default(0),
+  // 並び替え：固定枠（先頭に固定する）
+  pinned: boolean("pinned").notNull().default(false),
+  // 基本出勤（曜日 0=日〜6=土 → {start,end} / off）。月間スケジュールの「基本出勤を適用」で使う
+  baseSchedule: jsonb("base_schedule").$type<Record<string, { start: string; end: string; off?: boolean }>>().notNull().default({}),
   memo: text("memo").notNull().default(""),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
@@ -122,6 +128,8 @@ export const templates = pgTable("templates", {
   body: text("body").notNull().default(""),
   label: text("label").notNull().default("その他"),
   memo: text("memo").notNull().default(""),
+  groupName: text("group_name").notNull().default(""),
+  sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -183,6 +191,8 @@ export const syncLogs = pgTable("sync_logs", {
   jobId: integer("job_id"),
   portalId: integer("portal_id").notNull(),
   ok: boolean("ok").notNull(),
+  // 更新結果の分類：content（コンテンツ）/ schedule（出勤）/ girl（女性）/ delete（削除）/ sort（並び替え）/ ''（その他）
+  category: text("category").notNull().default(""),
   errorKind: text("error_kind").notNull().default(""),
   message: text("message").notNull().default(""),
   createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -210,5 +220,74 @@ export const castPhotos = pgTable("cast_photos", {
   kind: text("kind").notNull().default("photo"),
   url: text("url").notNull(),
   sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// ── コンテンツ更新（サイトごとの「速報」「上位化」などの枠と、その更新予定） ──
+export type ContentEntry = { title: string; body: string; templateId?: number };
+export type TimeSlot = { at: string; entry: ContentEntry }; // at = "HH:MM"
+export const contents = pgTable("contents", {
+  id: serial("id").primaryKey(),
+  shopId: integer("shop_id").notNull(),
+  site: text("site").notNull(), // sites.ts の code
+  slot: text("slot").notNull(), // contentCatalog.ts の slot
+  name: text("name").notNull(),
+  kind: text("kind").notNull().default("その他"), // 速報 / 上位化 / イベント / 割引 / 即姫 / 写メ / 求人 / その他
+  groupName: text("group_name").notNull().default(""),
+  // direct：直接入力（1件をすぐ送る） / timer：タイマー（間隔でローテーション） / times：時刻指定
+  mode: text("mode").notNull().default("timer"),
+  intervalMin: integer("interval_min").notNull().default(60),
+  loop: boolean("loop").notNull().default(true),
+  entries: jsonb("entries").$type<ContentEntry[]>().notNull().default([]),
+  times: jsonb("times").$type<TimeSlot[]>().notNull().default([]),
+  // 曜日（0=日〜6=土）。空なら毎日
+  weekdays: jsonb("weekdays").$type<number[]>().notNull().default([]),
+  // 更新時間帯（営業日の HH:MM。空なら設定画面の更新時間帯に従う）
+  hoursFrom: text("hours_from").notNull().default(""),
+  hoursTo: text("hours_to").notNull().default(""),
+  active: boolean("active").notNull().default(false), // タイマー稼働中
+  cursor: integer("cursor").notNull().default(0),
+  nextRunAt: timestamp("next_run_at"),
+  lastRunAt: timestamp("last_run_at"),
+  lastResult: text("last_result").notNull().default(""),
+  memo: text("memo").notNull().default(""),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// 簡単一括更新の履歴（最大100件）
+export const bulkPosts = pgTable("bulk_posts", {
+  id: serial("id").primaryKey(),
+  shopId: integer("shop_id").notNull(),
+  title: text("title").notNull(),
+  body: text("body").notNull().default(""),
+  targets: jsonb("targets").$type<number[]>().notNull().default([]), // contents.id
+  results: jsonb("results").$type<{ contentId: number; name: string; ok: boolean; message: string }[]>().notNull().default([]),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// 写メ日記転送：取り込んだ日記
+export const diaryItems = pgTable("diary_items", {
+  id: serial("id").primaryKey(),
+  shopId: integer("shop_id").notNull(),
+  castId: integer("cast_id"),
+  castName: text("cast_name").notNull().default(""),
+  title: text("title").notNull(),
+  body: text("body").notNull().default(""),
+  imageUrl: text("image_url").notNull().default(""),
+  sourceUrl: text("source_url").notNull().default(""),
+  status: text("status").notNull().default("pending"), // pending | sent | failed | skipped
+  message: text("message").notNull().default(""),
+  importedAt: timestamp("imported_at").notNull().defaultNow(),
+});
+
+// AIコメント生成の履歴（月の回数制限にも使う）
+export const aiGenerations = pgTable("ai_generations", {
+  id: serial("id").primaryKey(),
+  shopId: integer("shop_id").notNull(),
+  castId: integer("cast_id"),
+  kind: text("kind").notNull().default("comment"),
+  input: jsonb("input").$type<Record<string, string>>().notNull().default({}),
+  output: text("output").notNull().default(""),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });

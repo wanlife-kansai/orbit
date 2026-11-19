@@ -3,7 +3,8 @@
 import { PGlite } from "@electric-sql/pglite";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
-import { DDL } from "../src/db/ddl";
+import { DDL as DDL_BASE, DDL_SITES } from "../src/db/ddl";
+const DDL = DDL_BASE + "\n" + DDL_SITES + "\n";
 import { seedStatements } from "../src/db/seed";
 
 async function main() {

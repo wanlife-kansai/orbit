@@ -25,52 +25,13 @@ export default async function PortalsPage() {
 
   return (
     <>
-      <PageHeader title="連携ポータル" desc="公式サイトにはAPIで、ポータルには管理画面への自動ログインで配信します。" />
+      <PageHeader title="公式サイト連携" desc="公式サイトにはAPIで配信します。女性編集に出す連動先サイトもここで選びます。" />
       <div className="space-y-4">
         <OfficialPanel url={acc?.loginId ?? ""} hasKey={!!acc?.passwordEnc} linked={linked} lastCheck={acc?.lastCheckResult ?? ""} />
         <TargetSites initial={targetSitesOf(shop)} />
-        {portals.map((p) => (
-          <section key={p.id} className="card p-5">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <h2 className="font-semibold">{p.name}</h2>
-                <div className="text-xs text-zinc-500">{p.loginUrl}　日付切り替え {p.dayChangeHour}:00</div>
-              </div>
-              <div className="flex flex-wrap gap-1">
-                {p.supports.map((s) => (
-                  <span key={s} className="badge text-violet-300 ring-violet-800">{s}</span>
-                ))}
-                <span className="badge text-sky-300 ring-sky-800">テスト用</span>
-              </div>
-            </div>
-            <table className="mt-4 w-full">
-              <thead>
-                <tr>
-                  <th className="th">更新枠</th>
-                  <th className="th w-20">種別</th>
-                  <th className="th w-24">最小間隔</th>
-                  <th className="th">ルール</th>
-                </tr>
-              </thead>
-              <tbody>
-                {slots
-                  .filter((s) => s.portalId === p.id)
-                  .map((s) => (
-                    <tr key={s.id}>
-                      <td className="td font-medium">{s.name}</td>
-                      <td className="td">{s.kind}</td>
-                      <td className="td text-zinc-400">{s.minIntervalMin ? `${s.minIntervalMin}分` : "-"}</td>
-                      <td className="td text-xs text-zinc-400">{s.rules}</td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
-            {(() => {
-              const a = accounts.find((x) => x.portalId === p.id);
-              return <PortalAccount portalId={p.id} loginId={a?.loginId ?? ""} hasPassword={!!a?.passwordEnc} lastCheck={a?.lastCheckResult ?? ""} />;
-            })()}
-          </section>
-        ))}
+        <p className="text-sm text-zinc-400">
+          ポータルサイトのログインID・パスワードは <a href="/accounts" className="text-violet-300 underline">ID・PASS登録</a> で設定します。
+        </p>
       </div>
     </>
   );

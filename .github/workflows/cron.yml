@@ -1,0 +1,22 @@
+# ORBIT のタイマー更新（コンテンツ更新の予約）を5分おきに動かします。
+# リポジトリの Settings → Secrets and variables → Actions に
+#   変数 ORBIT_URL   （例：https://orbit-xxxx.vercel.app）
+#   シークレット CRON_SECRET（Vercel の環境変数 CRON_SECRET と同じ値）
+# を登録してください。
+name: orbit-cron
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: run due contents
+        env:
+          ORBIT_URL: ${{ vars.ORBIT_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$ORBIT_URL" ]; then echo "ORBIT_URL が未設定です"; exit 0; fi
+          curl -fsS -m 90 -H "Authorization: Bearer $CRON_SECRET" "$ORBIT_URL/api/cron"

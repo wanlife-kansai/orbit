@@ -1,1 +1,2 @@
 export const LABELS = ["新着", "出勤", "割引", "イベント", "新人", "求人", "その他"];
+export const TEMPLATE_MAX = 400;

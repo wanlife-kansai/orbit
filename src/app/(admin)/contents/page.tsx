@@ -1,37 +1,48 @@
-import Link from "next/link";
-import { and, desc, eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { SHOP_ID } from "@/lib/shop";
 import { PageHeader } from "@/components/PageHeader";
-import { dxPortal } from "@/lib/portals/dx";
-import { DxNewsPanel } from "./DxNewsPanel";
+import { CATALOG, KINDS } from "@/lib/contentCatalog";
+import { ALL_SITES } from "@/lib/sites";
+import { ContentList } from "./ContentList";
+import { AddContents } from "./AddContents";
 
 export default async function ContentsPage() {
-  const portal = await dxPortal();
-  const [acc] = portal
-    ? await db
-        .select()
-        .from(schema.shopPortalAccounts)
-        .where(and(eq(schema.shopPortalAccounts.shopId, SHOP_ID), eq(schema.shopPortalAccounts.portalId, portal.id)))
-    : [];
-  const templates = await db
-    .select({ id: schema.templates.id, title: schema.templates.title, body: schema.templates.body, label: schema.templates.label })
-    .from(schema.templates)
-    .where(eq(schema.templates.shopId, SHOP_ID))
-    .orderBy(desc(schema.templates.id));
+  const rows = await db.select().from(schema.contents).where(eq(schema.contents.shopId, SHOP_ID)).orderBy(asc(schema.contents.groupName), asc(schema.contents.name));
+  const portals = await db.select().from(schema.portals);
+  const accounts = await db.select().from(schema.shopPortalAccounts).where(eq(schema.shopPortalAccounts.shopId, SHOP_ID));
+  const registered = new Set(portals.filter((p) => accounts.some((a) => a.portalId === p.id && a.loginId)).map((p) => p.code));
+  const have = new Set(rows.map((r) => `${r.site}:${r.slot}`));
+
+  const items = rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    kind: r.kind,
+    group: r.groupName,
+    mode: r.mode,
+    active: r.active,
+    nextRunAt: r.nextRunAt?.toISOString() ?? null,
+    lastRunAt: r.lastRunAt?.toISOString() ?? null,
+    lastResult: r.lastResult,
+    memo: r.memo,
+    auto: !!CATALOG.find((c) => c.site === r.site && c.slot === r.slot)?.driver,
+    registered: registered.has(r.site),
+  }));
+  const catalog = ALL_SITES.filter((s) => CATALOG.some((c) => c.site === s.code)).map((s) => ({
+    code: s.code,
+    name: s.name,
+    registered: registered.has(s.code),
+    slots: CATALOG.filter((c) => c.site === s.code).map((c) => ({ key: `${c.site}:${c.slot}`, label: c.label, kind: c.kind, auto: !!c.driver, added: have.has(`${c.site}:${c.slot}`) })),
+  }));
 
   return (
     <>
-      <PageHeader title="コンテンツ更新" desc="ポータルの「更新できる枠」に投稿します。まずは風俗DXのお店速報から。" />
-      {!acc?.passwordEnc ? (
-        <div className="card p-6 text-sm text-zinc-300">
-          風俗DXのログインID・パスワードが未登録です。
-          <Link href="/portals" className="ml-1 text-violet-300 underline">連携ポータル</Link>
-          の「風俗DX」で登録してください。
-        </div>
-      ) : (
-        <DxNewsPanel templates={templates} />
-      )}
+      <PageHeader title="コンテンツ更新" desc="サイトごとの「速報」「上位化」「割引」などの枠を、タイマー・時刻指定・直接入力で更新します。">
+        <a href="/logs?c=content" className="btn">更新結果を見る</a>
+        <a href="/settings?tab=basic" className="btn">24時間更新の設定</a>
+      </PageHeader>
+      <AddContents catalog={catalog} />
+      <ContentList items={items} kinds={[...KINDS]} />
     </>
   );
 }

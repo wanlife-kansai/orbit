@@ -5,7 +5,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { SHOP_ID } from "@/lib/shop";
 import { removeImage } from "@/lib/storage";
-import { deliverCast, deliverCastFields, deliverCastRemoved, getConn } from "@/lib/official";
+import { autoDeliverCast, autoDeliverCastFields, deliverCast, deliverCastFields, deliverCastRemoved, getConn } from "@/lib/official";
 
 const { casts, castPhotos, castPortalMap, schedules, castStatus } = schema;
 
@@ -31,13 +31,13 @@ export async function deleteCasts(ids: number[]) {
 
 export async function togglePublished(id: number, value: boolean) {
   await db.update(casts).set({ isPublished: value }).where(and(eq(casts.id, id), eq(casts.shopId, SHOP_ID)));
-  after(() => deliverCastFields([id], value ? "公開に変更" : "非公開に変更"));
+  after(() => autoDeliverCastFields([id], value ? "公開に変更" : "非公開に変更"));
   revalidatePath("/casts");
 }
 
 export async function toggleNew(id: number, value: boolean) {
   await db.update(casts).set({ isNew: value }).where(and(eq(casts.id, id), eq(casts.shopId, SHOP_ID)));
-  after(() => deliverCast(id));
+  after(() => autoDeliverCast(id));
   revalidatePath("/casts");
 }
 
@@ -73,4 +73,10 @@ export async function pushCastsToSites(ids: number[]) {
   for (const id of list) await deliverCast(id);
   revalidatePath("/logs");
   return { ok: true, message: `${list.length}人を公式サイトへ送りました。結果は配信ログで確認できます。ポータルへの配信はロボット接続後に対応します。` };
+}
+
+/** 並び替え：固定枠（先頭に固定する女性） */
+export async function savePinned(ids: number[]) {
+  await db.update(casts).set({ pinned: false }).where(eq(casts.shopId, SHOP_ID));
+  if (ids.length) await db.update(casts).set({ pinned: true }).where(and(eq(casts.shopId, SHOP_ID), inArray(casts.id, ids)));
 }

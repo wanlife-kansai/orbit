@@ -89,9 +89,14 @@ export async function savePortalAccount(portalId: number, prev: Msg, fd: FormDat
     .insert(schema.shopPortalAccounts)
     .values({ shopId: SHOP_ID, portalId, loginId, passwordEnc: set.passwordEnc ?? "" })
     .onConflictDoUpdate({ target: [schema.shopPortalAccounts.shopId, schema.shopPortalAccounts.portalId], set });
+  revalidatePath("/portals");
+  revalidatePath("/accounts");
+  const [portal] = await db.select().from(schema.portals).where(eq(schema.portals.id, portalId));
+  if (portal?.code !== "fuzokudx") {
+    return { ok: true, message: "保存しました。このサイトの自動ログイン確認は、接続ができ次第おこないます。", n: prev.n + 1 };
+  }
   const { testDx } = await import("@/lib/portals/dx");
   const t = await testDx();
   await recordCheck(portalId, t.ok, t.message);
-  revalidatePath("/portals");
   return { ok: t.ok, message: t.ok ? `保存しました。風俗DXにログインできました（お店速報 ${t.data}件）` : `保存しました。${t.message}`, n: prev.n + 1 };
 }

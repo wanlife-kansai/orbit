@@ -1,4 +1,5 @@
 import { and, desc, eq } from "drizzle-orm";
+import { getSettings } from "./settings";
 import { db, schema } from "@/db";
 import { SHOP_ID, getShop } from "./shop";
 import { decrypt } from "./secret";
@@ -76,7 +77,18 @@ async function log(conn: Conn, what: string, r: Result) {
     ok: r.ok,
     errorKind: r.ok ? "" : errorKind(r),
     message: r.ok ? what : `${what}：${r.error}`,
+    category: categoryOf(what),
   });
+}
+
+/** 更新結果の分類（Venrey の「出勤／女性／削除／並び替え／コンテンツ」） */
+export function categoryOf(what: string) {
+  if (what.includes("出勤")) return "schedule";
+  if (what.includes("非公開に") || what.includes("削除")) return "delete";
+  if (what.includes("並び順")) return "sort";
+  if (what.includes("即姫")) return "content";
+  if (what.includes("女性")) return "girl";
+  return "";
 }
 
 /** 配信を安全に実行（例外を外に出さない） */
@@ -442,12 +454,12 @@ export async function linkedCount() {
   return rows.length;
 }
 
-export async function recentLogs(limit = 100) {
+export async function recentLogs(limit = 100, category?: string) {
   return db
-    .select({ id: syncLogs.id, ok: syncLogs.ok, errorKind: syncLogs.errorKind, message: syncLogs.message, createdAt: syncLogs.createdAt, portal: portals.name })
+    .select({ id: syncLogs.id, ok: syncLogs.ok, errorKind: syncLogs.errorKind, message: syncLogs.message, createdAt: syncLogs.createdAt, portal: portals.name, category: syncLogs.category })
     .from(syncLogs)
     .leftJoin(portals, eq(portals.id, syncLogs.portalId))
-    .where(eq(syncLogs.shopId, SHOP_ID))
+    .where(category ? and(eq(syncLogs.shopId, SHOP_ID), eq(syncLogs.category, category)) : eq(syncLogs.shopId, SHOP_ID))
     .orderBy(desc(syncLogs.id))
     .limit(limit);
 }
@@ -455,4 +467,15 @@ export async function recentLogs(limit = 100) {
 /** 接続先が変わったら、女性のつながり（どの子がどの子か）をリセットする */
 export async function resetLinks(portalId: number) {
   await db.delete(castPortalMap).where(and(eq(castPortalMap.shopId, SHOP_ID), eq(castPortalMap.portalId, portalId)));
+}
+
+/* ---------- オートシンクロ（設定 → その他 で切り替え） ---------- */
+export async function autoDeliverSchedules(items: { castId: number; date: string }[]) {
+  if ((await getSettings()).autoSyncSchedule) await deliverSchedules(items);
+}
+export async function autoDeliverCast(castId: number) {
+  if ((await getSettings()).autoSyncGirl) await deliverCast(castId);
+}
+export async function autoDeliverCastFields(castIds: number[], what: string) {
+  if ((await getSettings()).autoSyncGirl) await deliverCastFields(castIds, what);
 }

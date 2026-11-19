@@ -7,18 +7,38 @@ const fmt = (d: Date) =>
 const HINT: Record<string, string> = {
   接続: "相手のサイトが動いているか、URLが正しいか確認してください。時間をおいてもう一度試してください",
   認証: "APIキーが公式サイトの OFFICIAL_API_KEY と同じか確認してください",
-  ログイン: "連携ポータルで、そのサイトのログインID・パスワードを入れ直してください",
+  未対応: "このサイトへの自動更新は接続準備中です",
+  ログイン: "ID・PASS登録で、そのサイトのログインID・パスワードを入れ直してください",
   内容: "入力内容（年齢・時刻・タイトルなど）を確認してください",
   制限: "サイト側の回数・間隔の制限です（風俗DXの速報は登録後30分あける）。時間をおいてから送ってください",
   画面変更: "相手のサイトの画面が変わった可能性があります。開発側で確認が必要です",
   サーバー: "相手のサイト側でエラーが起きています。少し待ってからもう一度保存してください",
 };
 
-export default async function LogsPage() {
-  const logs = await recentLogs(200);
+const CATS = [
+  { key: "", label: "すべて" },
+  { key: "content", label: "コンテンツ更新結果" },
+  { key: "schedule", label: "出勤更新結果" },
+  { key: "girl", label: "女性更新結果" },
+  { key: "delete", label: "削除更新結果" },
+  { key: "sort", label: "並び替え更新結果" },
+];
+
+export default async function LogsPage({ searchParams }: { searchParams: Promise<{ c?: string; e?: string }> }) {
+  const { c = "", e } = await searchParams;
+  const cat = CATS.some((x) => x.key === c) ? c : "";
+  const all = await recentLogs(300, cat || undefined);
+  const logs = e ? all.filter((l) => !l.ok) : all;
   return (
     <>
-      <PageHeader title="配信ログ" desc="公式サイト・ポータルへの配信結果です（新しい順・最新200件）。" />
+      <PageHeader title="更新結果" desc="公式サイト・ポータルへの更新結果です（新しい順・最新300件）。">
+        <a href={`/logs?c=${cat}${e ? "" : "&e=1"}`} className="btn">{e ? "すべて表示" : "失敗だけ表示"}</a>
+      </PageHeader>
+      <div className="mb-3 flex flex-wrap gap-1">
+        {CATS.map((x) => (
+          <a key={x.key} href={`/logs?c=${x.key}`} className={`rounded-md px-3 py-1.5 text-sm ${cat === x.key ? "bg-violet-600/20 text-violet-200" : "text-zinc-400 hover:bg-zinc-800"}`}>{x.label}</a>
+        ))}
+      </div>
       <div className="card overflow-x-auto">
         <table className="w-full min-w-[640px]">
           <thead>
@@ -32,7 +52,7 @@ export default async function LogsPage() {
           <tbody>
             {logs.length === 0 && (
               <tr>
-                <td className="td text-zinc-500" colSpan={4}>まだ配信はありません</td>
+                <td className="td text-zinc-500" colSpan={4}>まだ更新結果はありません</td>
               </tr>
             )}
             {logs.map((l) => (

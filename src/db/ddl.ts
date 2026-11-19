@@ -185,4 +185,82 @@ CREATE TABLE IF NOT EXISTS cast_photos (
   created_at timestamp NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS cast_photos_cast ON cast_photos (cast_id);
+
+-- Venrey全メニュー対応（2026-11-20 追加）
+ALTER TABLE shops ADD COLUMN IF NOT EXISTS settings jsonb NOT NULL DEFAULT '{}';
+ALTER TABLE casts ADD COLUMN IF NOT EXISTS pinned boolean NOT NULL DEFAULT false;
+ALTER TABLE casts ADD COLUMN IF NOT EXISTS base_schedule jsonb NOT NULL DEFAULT '{}';
+ALTER TABLE templates ADD COLUMN IF NOT EXISTS group_name text NOT NULL DEFAULT '';
+ALTER TABLE templates ADD COLUMN IF NOT EXISTS sort_order integer NOT NULL DEFAULT 0;
+ALTER TABLE sync_logs ADD COLUMN IF NOT EXISTS category text NOT NULL DEFAULT '';
+
+CREATE TABLE IF NOT EXISTS contents (
+  id serial PRIMARY KEY,
+  shop_id integer NOT NULL,
+  site text NOT NULL,
+  slot text NOT NULL,
+  name text NOT NULL,
+  kind text NOT NULL DEFAULT 'その他',
+  group_name text NOT NULL DEFAULT '',
+  mode text NOT NULL DEFAULT 'timer',
+  interval_min integer NOT NULL DEFAULT 60,
+  loop boolean NOT NULL DEFAULT true,
+  entries jsonb NOT NULL DEFAULT '[]',
+  times jsonb NOT NULL DEFAULT '[]',
+  weekdays jsonb NOT NULL DEFAULT '[]',
+  hours_from text NOT NULL DEFAULT '',
+  hours_to text NOT NULL DEFAULT '',
+  active boolean NOT NULL DEFAULT false,
+  cursor integer NOT NULL DEFAULT 0,
+  next_run_at timestamp,
+  last_run_at timestamp,
+  last_result text NOT NULL DEFAULT '',
+  memo text NOT NULL DEFAULT '',
+  sort_order integer NOT NULL DEFAULT 0,
+  created_at timestamp NOT NULL DEFAULT now()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS contents_shop_slot ON contents (shop_id, site, slot);
+
+CREATE TABLE IF NOT EXISTS bulk_posts (
+  id serial PRIMARY KEY,
+  shop_id integer NOT NULL,
+  title text NOT NULL,
+  body text NOT NULL DEFAULT '',
+  targets jsonb NOT NULL DEFAULT '[]',
+  results jsonb NOT NULL DEFAULT '[]',
+  created_at timestamp NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS diary_items (
+  id serial PRIMARY KEY,
+  shop_id integer NOT NULL,
+  cast_id integer,
+  cast_name text NOT NULL DEFAULT '',
+  title text NOT NULL,
+  body text NOT NULL DEFAULT '',
+  image_url text NOT NULL DEFAULT '',
+  source_url text NOT NULL DEFAULT '',
+  status text NOT NULL DEFAULT 'pending',
+  message text NOT NULL DEFAULT '',
+  imported_at timestamp NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS ai_generations (
+  id serial PRIMARY KEY,
+  shop_id integer NOT NULL,
+  cast_id integer,
+  kind text NOT NULL DEFAULT 'comment',
+  input jsonb NOT NULL DEFAULT '{}',
+  output text NOT NULL DEFAULT '',
+  created_at timestamp NOT NULL DEFAULT now()
+);
 `;
+
+import { ALL_SITES } from "../lib/sites";
+/** 連動先サイトを portals に登録（ID・PASS登録の一覧に出す） */
+export const DDL_SITES = ALL_SITES.filter((s) => s.code !== "official")
+  .map(
+    (s) =>
+      `INSERT INTO portals (code, name, kind, login_url, day_change_hour, supports) VALUES ('${s.code}', '${s.name.replace(/'/g, "''")}', 'portal', '', 6, '[]') ON CONFLICT (code) DO NOTHING;`,
+  )
+  .join("\n");
