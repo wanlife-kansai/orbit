@@ -65,6 +65,7 @@ const GROUPS: { title: string; items: Item[] }[] = [
       { href: "/settings", label: "設定" },
       { href: "/help", label: "操作説明Q&A" },
       { href: "/inquiry", label: "お問合せ" },
+      { href: "/free-sites", label: "無料サイト申込" },
     ],
   },
 ];

@@ -47,6 +47,8 @@ export type ShopSettings = {
   };
   // AI
   aiMonthlyLimit: number;
+  // 無料サイト申込：サイト名 → メモ
+  freeSiteMemos: Record<string, string>;
 };
 
 export const DEFAULT_SETTINGS: ShopSettings = {
@@ -78,6 +80,7 @@ export const DEFAULT_SETTINGS: ShopSettings = {
   autoSyncGirlSites: [],
   diary: { running: false, sourceSite: "", sourceUrl: "", footer: "", fromEmail: "", targets: [], excludedCasts: [] },
   aiMonthlyLimit: 50,
+  freeSiteMemos: {},
 };
 
 export function mergeSettings(raw: Record<string, unknown> | null | undefined): ShopSettings {
