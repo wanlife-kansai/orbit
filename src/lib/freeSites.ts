@@ -289,3 +289,76 @@ export const FREE_SITES: FreeSite[] = [
 
 /** 申込ページ（案内ページがなければ検索） */
 export const applyUrl = (s: FreeSite) => s.banner || `https://www.google.com/search?q=${encodeURIComponent(`${s.name} 無料掲載 申し込み`)}`;
+
+/** 予測変換用の読み（漢字・記号を含むサイト名だけ） */
+export const FREE_SITE_YOMI: Record<string, string> = {
+  "365日マネー女子宣言": "さんびゃくろくじゅうごにちまねーじょしせんげん",
+  "Qプリ": "きゅーぷり",
+  "アガる風俗": "あがるふうぞく",
+  "アサ芸風俗": "あさげいふうぞく",
+  "アロマ予約.com": "あろまよやくどっとこむ",
+  "エステdeジョブ": "えすてでじょぶ",
+  "エステの達人": "えすてのたつじん",
+  "エステ魂": "えすてだましい",
+  "エステ図鑑": "えすてずかん",
+  "そけい部長のメンエスナビ": "そけいぶちょうのめんえすなび",
+  "デリヘル王国": "でりへるおうこく",
+  "はたらく熟女ねっと": "はたらくじゅくじょねっと",
+  "メンエスMAP": "めんえすまっぷ",
+  "メンズエステ情報局": "めんずえすてじょうほうきょく",
+  "駅ちか人気！風俗ランキング": "えきちかにんきふうぞくらんきんぐ",
+  "俺のアロマ": "おれのあろま",
+  "俺の手コキ": "おれのてこき",
+  "見えちゃっとTV": "みえちゃっとてぃーびー",
+  "口コミ風俗情報局": "くちこみふうぞくじょうほうきょく",
+  "高収入ドットコム": "こうしゅうにゅうどっとこむ",
+  "手コキが一番": "てこきがいちばん",
+  "人気風俗店情報": "にんきふうぞくてんじょうほう",
+  "人妻王国": "ひとづまおうこく",
+  "全国メンズエステランキング": "ぜんこくめんずえすてらんきんぐ",
+  "体入ねっと": "たいにゅうねっと",
+  "当たり嬢レポート": "あたりじょうれぽーと",
+  "姫リク": "ひめりく",
+  "風の給与明細": "ふうのきゅうよめいさい",
+  "風俗DX": "ふうぞくでぃーえっくす",
+  "風俗じゃぱん！": "ふうぞくじゃぱん",
+  "風俗ちゃんねる": "ふうぞくちゃんねる",
+  "風俗の神様": "ふうぞくのかみさま",
+  "風俗王国": "ふうぞくおうこく",
+  "風俗情報ゾクゾク": "ふうぞくじょうほうぞくぞく",
+  "風俗新聞": "ふうぞくしんぶん",
+};
+
+/** 検索用に文字をそろえる（全角英数→半角・小文字、カタカナ→ひらがな、長音や記号を除く） */
+export function normalizeKana(s: string) {
+  return s
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/[ァ-ヶ]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0x60))
+    .replace(/[\s・！!.．ー\-ｰ]/g, "");
+}
+
+/** ひらがな → ローマ字（ヘボン式・ざっくり）。「fuuzoku」「deriheru」などで探せるように */
+const ROMA: Record<string, string> = {
+  きゃ:"kya",きゅ:"kyu",きょ:"kyo",しゃ:"sha",しゅ:"shu",しょ:"sho",ちゃ:"cha",ちゅ:"chu",ちょ:"cho",にゃ:"nya",にゅ:"nyu",にょ:"nyo",ひゃ:"hya",ひゅ:"hyu",ひょ:"hyo",みゃ:"mya",みゅ:"myu",みょ:"myo",りゃ:"rya",りゅ:"ryu",りょ:"ryo",ぎゃ:"gya",ぎゅ:"gyu",ぎょ:"gyo",じゃ:"ja",じゅ:"ju",じょ:"jo",びゃ:"bya",びゅ:"byu",びょ:"byo",ぴゃ:"pya",ぴゅ:"pyu",ぴょ:"pyo",てぃ:"ti",でぃ:"di",ふぁ:"fa",ふぃ:"fi",ふぇ:"fe",ふぉ:"fo",
+  あ:"a",い:"i",う:"u",え:"e",お:"o",か:"ka",き:"ki",く:"ku",け:"ke",こ:"ko",さ:"sa",し:"shi",す:"su",せ:"se",そ:"so",た:"ta",ち:"chi",つ:"tsu",て:"te",と:"to",な:"na",に:"ni",ぬ:"nu",ね:"ne",の:"no",は:"ha",ひ:"hi",ふ:"fu",へ:"he",ほ:"ho",ま:"ma",み:"mi",む:"mu",め:"me",も:"mo",や:"ya",ゆ:"yu",よ:"yo",ら:"ra",り:"ri",る:"ru",れ:"re",ろ:"ro",わ:"wa",を:"wo",ん:"n",
+  が:"ga",ぎ:"gi",ぐ:"gu",げ:"ge",ご:"go",ざ:"za",じ:"ji",ず:"zu",ぜ:"ze",ぞ:"zo",だ:"da",ぢ:"ji",づ:"zu",で:"de",ど:"do",ば:"ba",び:"bi",ぶ:"bu",べ:"be",ぼ:"bo",ぱ:"pa",ぴ:"pi",ぷ:"pu",ぺ:"pe",ぽ:"po",ぁ:"a",ぃ:"i",ぅ:"u",ぇ:"e",ぉ:"o",ゃ:"ya",ゅ:"yu",ょ:"yo",ゔ:"vu",
+};
+export function toRomaji(hira: string) {
+  let out = "";
+  for (let i = 0; i < hira.length; i++) {
+    const two = hira.slice(i, i + 2);
+    if (ROMA[two]) { out += ROMA[two]; i++; continue; }
+    const c = hira[i];
+    if (c === "っ") { const n = ROMA[hira.slice(i + 1, i + 3)] ?? ROMA[hira[i + 1]] ?? ""; out += n[0] ?? ""; continue; }
+    out += ROMA[c] ?? c;
+  }
+  return out;
+}
+
+/** サイトごとの検索キー（名前・読み・ローマ字） */
+export function searchKeys(name: string) {
+  const n = normalizeKana(name);
+  const y = normalizeKana(FREE_SITE_YOMI[name] ?? name);
+  return [n, y, toRomaji(y), toRomaji(n)];
+}
