@@ -28,27 +28,45 @@ export function ImportRunner({ savedId, hasSaved, lastImportAt, lastSummary }: {
 
       if (opts.girls) {
         setProgress({ done: 0, total: c.girls.length });
-        let created = 0, updated = 0, photos = 0, errors = 0;
-        for (let i = 0; i < c.girls.length; i += 2) {
-          if (stop.current) break;
-          const batch = c.girls.slice(i, i + 2).map((g) => g.id);
-          const r = await importGirlsStep(c.session, batch);
-          if (!r.ok) {
-            add({ text: r.message, tone: "err" });
-            errors++;
-            break;
-          }
-          for (const x of r.results) {
-            if (x.error) {
-              errors++;
-              add({ text: `× ${c.girls.find((g) => g.id === x.id)?.name}：${x.error}`, tone: "err" });
-            } else {
-              x.created ? created++ : updated++;
-              photos += x.photos;
+        let created = 0, updated = 0, photos = 0, errors = 0, done = 0;
+        // 2人ずつを3本並行で。通信が切れたら少し待って最大3回やり直す
+        const batches: number[][] = [];
+        for (let i = 0; i < c.girls.length; i += 2) batches.push(c.girls.slice(i, i + 2).map((g) => g.id));
+        let next = 0;
+        let fatal = "";
+        const worker = async () => {
+          while (!stop.current && !fatal && next < batches.length) {
+            const batch = batches[next++];
+            let r: Awaited<ReturnType<typeof importGirlsStep>> | null = null;
+            for (let t = 0; t < 3 && !r; t++) {
+              try {
+                r = await importGirlsStep(c.session, batch);
+              } catch {
+                await new Promise((ok) => setTimeout(ok, 3000 * (t + 1)));
+              }
             }
+            if (!r) {
+              errors += batch.length;
+              add({ text: `× 通信エラー：${batch.map((id) => c.girls.find((g) => g.id === id)?.name).join("・")}（もう一度実行すると続きから入ります）`, tone: "err" });
+            } else if (!r.ok) {
+              fatal = r.message;
+            } else {
+              for (const x of r.results) {
+                if (x.error) {
+                  errors++;
+                  add({ text: `× ${c.girls.find((g) => g.id === x.id)?.name}：${x.error}`, tone: "err" });
+                } else {
+                  x.created ? created++ : updated++;
+                  photos += x.photos;
+                }
+              }
+            }
+            done += batch.length;
+            setProgress({ done, total: c.girls.length });
           }
-          setProgress({ done: Math.min(i + 2, c.girls.length), total: c.girls.length });
-        }
+        };
+        await Promise.all([worker(), worker(), worker()]);
+        if (fatal) add({ text: fatal, tone: "err" });
         const line = `女性：新規 ${created}人・更新 ${updated}人、写真 ${photos}枚を追加${errors ? `、エラー ${errors}件` : ""}`;
         summary.push(line);
         add({ text: line, tone: errors ? "err" : "ok" });
