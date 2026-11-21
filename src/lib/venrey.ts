@@ -335,7 +335,8 @@ async function syncPhotos(s: VenreySession, shopId: number, castId: number, want
   // 大きい順に探す（900×1200 → 600×800 → 正方形のbase）。取れたサイズを source_ref に残し、サイズが上がったら取り直す
   const key = (kind: string, uuid: string) => `venrey:${kind}:${uuid}@`;
   const wantKeys = new Set(want.map((w) => key(w.kind, w.uuid)));
-  const best = (ref: string) => ref.endsWith(`@${PHOTO_SIZES[0]}`);
+  // サイズ付きで入っている写真はそのまま（取り直さない）。サイズの記録がない古い取り込み分だけ差し替える
+  const best = (ref: string) => PHOTO_SIZES.some((sz) => ref.endsWith(`@${sz}`));
   // Venrey で消えた写真・小さいサイズで入っていた写真は外す（ORBIT で手で追加した写真はそのまま）
   const gone = have.filter((h) => !best(h.sourceRef) || !wantKeys.has(h.sourceRef.slice(0, h.sourceRef.lastIndexOf("@") + 1)));
   for (const g of gone) await removeImage(g.url);
