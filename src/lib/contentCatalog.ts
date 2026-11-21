@@ -55,10 +55,19 @@ export const EXTRA_SITES: { code: string; name: string }[] = [
   {
     "code": "cocoa",
     "name": "駅ちか！風俗求人ココア（求人）"
-  }
+  },
+  { "code": "30baito", "name": "30からの風俗アルバイト【関西版】（求人）" },
+  { "code": "ctiv2", "name": "CTIv2" }
 ];
 
 export const CATALOG: CatalogItem[] = [
+ // 2026-11-22 追加：快楽園のVenreyにあってORBITになかった枠
+ { "site": "30baito", "slot": "s1", "label": "(急募コメント)【有料】", "kind": "求人" },
+ { "site": "30baito", "slot": "s2", "label": "(上位表示ボタン)【有料】", "kind": "上位化" },
+ { "site": "30baito", "slot": "s3", "label": "(上位表示ボタン-質問箱特典)【有料】", "kind": "上位化" },
+ { "site": "ctiv2", "slot": "s1", "label": "【出勤更新のみ】", "kind": "その他" },
+ { "site": "himechoku", "slot": "s1", "label": "【女性登録のみ】", "kind": "その他" },
+ { "site": "shabi", "slot": "s1", "label": "【女性登録のみ】", "kind": "その他" },
  {
   "site": "fuweb",
   "slot": "s1",

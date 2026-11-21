@@ -18,6 +18,8 @@ import { CATALOG } from "./contentCatalog";
 const API = "https://webapi2.mrvenrey.jp";
 const BLOB = "https://mrvenreyweb.blob.core.windows.net";
 const { casts, castPhotos, schedules, templates, contents } = schema;
+/** Venrey が持っている写真のサイズ（大きい順）。base は正方形にトリミングされた元画像 */
+const PHOTO_SIZES = ["900_1200", "600_800", "base"];
 
 export type VenreySession = { token: string; sas: string; vid: string; exp: number };
 
@@ -241,9 +243,9 @@ export function mapGirl(d: VDetail) {
   const bloodIdx = Number(p.Blood);
   const birthday = p.BirthY && p.BirthM && p.BirthD ? `${p.BirthY}-${String(p.BirthM).padStart(2, "0")}-${String(p.BirthD).padStart(2, "0")}` : "";
   const { fields, qaBySite } = siteValues(d);
-  const aliases: Record<string, string> = {};
-  for (let i = 1; i <= 10; i++) if (str(p[`SubName${i}`])) aliases[`venrey${i}`] = str(p[`SubName${i}`]);
-  if (Object.keys(aliases).length) fields._alias = aliases;
+  // Venrey の別名1〜10（同じ女性として扱う名前）→ ORBIT 別名管理の「同一女性の別名」
+  const same = Array.from({ length: 10 }, (_, i) => str(p[`SubName${i + 1}`]).trim()).filter(Boolean);
+  if (same.length) fields._alias = { _same: same.join("、") };
   const pr = str(p.PrDefault);
   if (pr) fields.venrey_pr = { base: pr, ...byLength(p, "Pr") };
 
@@ -330,26 +332,37 @@ async function syncPhotos(s: VenreySession, shopId: number, castId: number, want
     .select()
     .from(castPhotos)
     .where(and(eq(castPhotos.castId, castId), like(castPhotos.sourceRef, "venrey:%")));
-  const key = (kind: string, uuid: string) => `venrey:${kind}:${uuid}`;
+  // 大きい順に探す（900×1200 → 600×800 → 正方形のbase）。取れたサイズを source_ref に残し、サイズが上がったら取り直す
+  const key = (kind: string, uuid: string) => `venrey:${kind}:${uuid}@`;
   const wantKeys = new Set(want.map((w) => key(w.kind, w.uuid)));
-  // Venrey で消えた写真は ORBIT からも外す（ORBIT で手で追加した写真はそのまま）
-  const gone = have.filter((h) => !wantKeys.has(h.sourceRef));
+  const best = (ref: string) => ref.endsWith(`@${PHOTO_SIZES[0]}`);
+  // Venrey で消えた写真・小さいサイズで入っていた写真は外す（ORBIT で手で追加した写真はそのまま）
+  const gone = have.filter((h) => !best(h.sourceRef) || !wantKeys.has(h.sourceRef.slice(0, h.sourceRef.lastIndexOf("@") + 1)));
   for (const g of gone) await removeImage(g.url);
   if (gone.length) await db.delete(castPhotos).where(inArray(castPhotos.id, gone.map((g) => g.id)));
   let added = 0;
   for (const w of want) {
     const k = key(w.kind, w.uuid);
-    const cur = have.find((h) => h.sourceRef === k);
+    const cur = have.find((h) => h.sourceRef.startsWith(k) && !gone.includes(h));
     if (cur) {
       if (cur.sortOrder !== w.order) await db.update(castPhotos).set({ sortOrder: w.order }).where(eq(castPhotos.id, cur.id));
       continue;
     }
-    const res = await fetch(`${BLOB}/${s.vid}/image/girls/${w.uuid}/base.jpg${s.sas}`, { cache: "no-store" });
-    if (!res.ok) continue;
+    let res: Response | null = null;
+    let size = "";
+    for (const sz of PHOTO_SIZES) {
+      const r = await fetch(`${BLOB}/${s.vid}/image/girls/${w.uuid}/${sz}.jpg${s.sas}`, { cache: "no-store" });
+      if (r.ok) {
+        res = r;
+        size = sz;
+        break;
+      }
+    }
+    if (!res) continue;
     const buf = await res.arrayBuffer();
     const type = res.headers.get("content-type")?.includes("png") ? "image/png" : "image/jpeg";
     const url = await saveImage(new File([buf], `${w.uuid}.jpg`, { type }), `shop${shopId}/cast${castId}`);
-    await db.insert(castPhotos).values({ shopId, castId, kind: w.kind, url, sortOrder: w.order, sourceRef: k });
+    await db.insert(castPhotos).values({ shopId, castId, kind: w.kind, url, sortOrder: w.order, sourceRef: k + size });
     added++;
   }
   return added;
@@ -430,11 +443,20 @@ export async function importTemplates(s: VenreySession, shopId: number) {
 type VContent = { BaseSeq: string; BaitaiCode: string; ContentsName: string; ContentsDispName: string; ContentsMemo: string | null; IsActive: boolean };
 export async function importContents(s: VenreySession, shopId: number) {
   const r = await vget<{ ContentsList: VContent[] }>(s, "contents");
-  const byName = new Map(CATALOG.map((c) => [norm(`${siteName(c.site)}${c.label}`), c]));
+  // サイト名は ORBIT 側に「（求人）」などが付くので、付けた名前・外した名前の両方で照らし合わせる
+  const byName = new Map<string, (typeof CATALOG)[number]>();
+  for (const c of CATALOG) {
+    const n = siteName(c.site);
+    for (const v of [n, n.replace(/（[^（）]*）$/, "")]) byName.set(norm(`${v}${c.label}`), c);
+  }
+  const official = (name: string) => {
+    const m = /^オフィシャル（[^)）]*[)）](.*)$/.exec(name);
+    return m ? CATALOG.find((c) => c.site === "official" && norm(c.label) === norm(m[1])) : undefined;
+  };
   let matched = 0;
   const unmatched: string[] = [];
   for (const c of r.ContentsList) {
-    const it = byName.get(norm(c.ContentsName)) ?? byName.get(norm(c.ContentsDispName));
+    const it = byName.get(norm(c.ContentsName)) ?? byName.get(norm(c.ContentsDispName)) ?? official(c.ContentsName);
     if (!it) {
       unmatched.push(c.ContentsName);
       continue;

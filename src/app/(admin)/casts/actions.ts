@@ -56,7 +56,7 @@ export async function saveAliases(site: string, rows: { castId: number; alias: s
     const [c] = await db.select({ siteFields: casts.siteFields }).from(casts).where(and(eq(casts.id, r.castId), eq(casts.shopId, (await currentShopId()))));
     if (!c) continue;
     const aliases = { ...((c.siteFields._alias as Record<string, string> | undefined) ?? {}) };
-    const alias = r.alias.trim().slice(0, 50);
+    const alias = r.alias.trim().slice(0, site === "_same" ? 300 : 50);
     if (alias) aliases[site] = alias;
     else delete aliases[site];
     await db.update(casts).set({ siteFields: { ...c.siteFields, _alias: aliases } }).where(eq(casts.id, r.castId));
