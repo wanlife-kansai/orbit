@@ -2,7 +2,7 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { SHOP_ID } from "@/lib/shop";
+import { currentShopId } from "@/lib/shop";
 import { decrypt, encrypt } from "@/lib/secret";
 import { getSettings, patchSettings } from "@/lib/settings";
 import { getOfficialPortal } from "@/lib/official";
@@ -14,7 +14,7 @@ export async function listApiKeys(): Promise<{ current: { last4: string } | null
   const portal = await getOfficialPortal();
   let current: { last4: string } | null = null;
   if (portal) {
-    const [a] = await db.select().from(schema.shopPortalAccounts).where(and(eq(schema.shopPortalAccounts.shopId, SHOP_ID), eq(schema.shopPortalAccounts.portalId, portal.id)));
+    const [a] = await db.select().from(schema.shopPortalAccounts).where(and(eq(schema.shopPortalAccounts.shopId, (await currentShopId())), eq(schema.shopPortalAccounts.portalId, portal.id)));
     if (a?.passwordEnc) {
       try { current = { last4: decrypt(a.passwordEnc).slice(-4) }; } catch { current = null; }
     }
@@ -28,7 +28,7 @@ export async function revealApiKey(id: string) {
     if (id === "current") {
       const portal = await getOfficialPortal();
       if (!portal) return { ok: false, key: "" };
-      const [a] = await db.select().from(schema.shopPortalAccounts).where(and(eq(schema.shopPortalAccounts.shopId, SHOP_ID), eq(schema.shopPortalAccounts.portalId, portal.id)));
+      const [a] = await db.select().from(schema.shopPortalAccounts).where(and(eq(schema.shopPortalAccounts.shopId, (await currentShopId())), eq(schema.shopPortalAccounts.portalId, portal.id)));
       return a?.passwordEnc ? { ok: true, key: decrypt(a.passwordEnc) } : { ok: false, key: "" };
     }
     const k = (await getSettings()).apiKeys.find((x) => x.id === id);

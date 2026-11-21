@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { and, asc, eq, gte, lte } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { getShop, SHOP_ID } from "@/lib/shop";
+import { getShop, currentShopId } from "@/lib/shop";
 import { addDays, businessDate, labelMd, mondayOf } from "@/lib/dates";
 import { PageHeader } from "@/components/PageHeader";
 import { WeekGrid } from "./WeekGrid";
@@ -17,12 +17,12 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
   const casts = await db
     .select({ id: schema.casts.id, name: schema.casts.name })
     .from(schema.casts)
-    .where(eq(schema.casts.shopId, SHOP_ID))
+    .where(eq(schema.casts.shopId, (await currentShopId())))
     .orderBy(asc(schema.casts.sortOrder), asc(schema.casts.id));
   const rows = await db
     .select()
     .from(schema.schedules)
-    .where(and(eq(schema.schedules.shopId, SHOP_ID), gte(schema.schedules.date, monday), lte(schema.schedules.date, sunday)));
+    .where(and(eq(schema.schedules.shopId, (await currentShopId())), gte(schema.schedules.date, monday), lte(schema.schedules.date, sunday)));
 
   const dates = Array.from({ length: 7 }, (_, i) => {
     const date = addDays(monday, i);

@@ -1,6 +1,6 @@
 import { db, schema } from "@/db";
 import { and, asc, eq } from "drizzle-orm";
-import { SHOP_ID } from "./shop";
+import { currentShopId } from "./shop";
 import { businessDate, minutesInBusinessDay, nowMinutesInBusinessDay } from "./dates";
 
 const { casts, schedules, castStatus } = schema;
@@ -33,13 +33,13 @@ export async function getTodayRoster(dayChangeHour: number) {
     })
     .from(schedules)
     .innerJoin(casts, eq(casts.id, schedules.castId))
-    .where(and(eq(schedules.shopId, SHOP_ID), eq(schedules.date, date), eq(schedules.off, false)))
+    .where(and(eq(schedules.shopId, (await currentShopId())), eq(schedules.date, date), eq(schedules.off, false)))
     .orderBy(asc(schedules.start), asc(casts.sortOrder));
 
   const statuses = await db
     .select()
     .from(castStatus)
-    .where(and(eq(castStatus.shopId, SHOP_ID), eq(castStatus.date, date)));
+    .where(and(eq(castStatus.shopId, (await currentShopId())), eq(castStatus.date, date)));
   const byCast = new Map(statuses.map((s) => [s.castId, s]));
 
   const nowMin = nowMinutesInBusinessDay(dayChangeHour);

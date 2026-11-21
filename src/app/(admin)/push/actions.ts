@@ -2,7 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { and, eq, gte, inArray, lte } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { getShop, SHOP_ID } from "@/lib/shop";
+import { getShop, currentShopId } from "@/lib/shop";
 import { addDays, businessDate } from "@/lib/dates";
 import { getSettings } from "@/lib/settings";
 import { deliverCast, deliverCastRemoved, deliverSchedules, getConn } from "@/lib/official";
@@ -28,7 +28,7 @@ export async function pushSchedules(castIds: number[], sites: string[]): Promise
     const rows = await db
       .select({ castId: schema.schedules.castId, date: schema.schedules.date })
       .from(schema.schedules)
-      .where(and(eq(schema.schedules.shopId, SHOP_ID), inArray(schema.schedules.castId, castIds), gte(schema.schedules.date, from), lte(schema.schedules.date, to)));
+      .where(and(eq(schema.schedules.shopId, (await currentShopId())), inArray(schema.schedules.castId, castIds), gte(schema.schedules.date, from), lte(schema.schedules.date, to)));
     // 未設定の日も送る（公式サイト側の古い出勤を消すため）
     const items: { castId: number; date: string }[] = [];
     for (const id of castIds) for (let d = 0; ; d++) { const date = addDays(from, d); if (date > to) break; items.push({ castId: id, date }); }
@@ -56,7 +56,7 @@ export async function deleteFromSites(castIds: number[], sites: string[]): Promi
   let head = "";
   if (sites.includes("official")) {
     if (!(await getConn())) return { ok: false, message: "公式サイトが未接続です" };
-    const list = await db.select({ id: schema.casts.id, name: schema.casts.name }).from(schema.casts).where(and(eq(schema.casts.shopId, SHOP_ID), inArray(schema.casts.id, castIds)));
+    const list = await db.select({ id: schema.casts.id, name: schema.casts.name }).from(schema.casts).where(and(eq(schema.casts.shopId, (await currentShopId())), inArray(schema.casts.id, castIds)));
     for (const c of list) await deliverCastRemoved(c.id, c.name);
     head = `公式サイトで ${list.length}人を非公開にしました（ORBITからは削除していません）。`;
   }

@@ -2,7 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { and, eq, inArray } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { SHOP_ID } from "@/lib/shop";
+import { currentShopId } from "@/lib/shop";
 import { getSettings, patchSettings, type ShopSettings } from "@/lib/settings";
 
 export async function saveDiary(p: Partial<ShopSettings["diary"]>) {
@@ -21,6 +21,6 @@ export async function saveDiary(p: Partial<ShopSettings["diary"]>) {
 }
 
 export async function deleteDiaryItems(ids: number[]) {
-  if (ids.length) await db.delete(schema.diaryItems).where(and(eq(schema.diaryItems.shopId, SHOP_ID), inArray(schema.diaryItems.id, ids)));
+  if (ids.length) await db.delete(schema.diaryItems).where(and(eq(schema.diaryItems.shopId, (await currentShopId())), inArray(schema.diaryItems.id, ids)));
   revalidatePath("/diary");
 }

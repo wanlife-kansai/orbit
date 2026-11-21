@@ -2,7 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { and, asc, desc, eq, inArray, lt } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { SHOP_ID } from "@/lib/shop";
+import { currentShopId } from "@/lib/shop";
 import { postContent } from "@/lib/connectors";
 
 const B = schema.bulkPosts;
@@ -14,7 +14,7 @@ export async function sendBulk(input: { title: string; body: string; contentIds:
   const targets = await db
     .select()
     .from(schema.contents)
-    .where(and(eq(schema.contents.shopId, SHOP_ID), inArray(schema.contents.id, input.contentIds)))
+    .where(and(eq(schema.contents.shopId, (await currentShopId())), inArray(schema.contents.id, input.contentIds)))
     .orderBy(asc(schema.contents.name));
   const results: { contentId: number; name: string; ok: boolean; message: string }[] = [];
   for (const c of targets) {
@@ -22,10 +22,10 @@ export async function sendBulk(input: { title: string; body: string; contentIds:
     results.push({ contentId: c.id, name: c.name, ok: r.ok, message: r.message });
     await db.update(schema.contents).set({ lastRunAt: new Date(), lastResult: r.ok ? `成功：${title}` : `失敗：${r.message}` }).where(eq(schema.contents.id, c.id));
   }
-  await db.insert(B).values({ shopId: SHOP_ID, title, body: input.body, targets: input.contentIds, results });
+  await db.insert(B).values({ shopId: (await currentShopId()), title, body: input.body, targets: input.contentIds, results });
   // 100件を超えたら古いものから削除
-  const old = await db.select({ id: B.id }).from(B).where(eq(B.shopId, SHOP_ID)).orderBy(desc(B.id)).offset(100).limit(1);
-  if (old[0]) await db.delete(B).where(and(eq(B.shopId, SHOP_ID), lt(B.id, old[0].id + 1)));
+  const old = await db.select({ id: B.id }).from(B).where(eq(B.shopId, (await currentShopId()))).orderBy(desc(B.id)).offset(100).limit(1);
+  if (old[0]) await db.delete(B).where(and(eq(B.shopId, (await currentShopId())), lt(B.id, old[0].id + 1)));
   revalidatePath("/bulk");
   revalidatePath("/logs");
   const ok = results.filter((r) => r.ok).length;
@@ -33,6 +33,6 @@ export async function sendBulk(input: { title: string; body: string; contentIds:
 }
 
 export async function deleteBulk(ids: number[]) {
-  if (ids.length) await db.delete(B).where(and(eq(B.shopId, SHOP_ID), inArray(B.id, ids)));
+  if (ids.length) await db.delete(B).where(and(eq(B.shopId, (await currentShopId())), inArray(B.id, ids)));
   revalidatePath("/bulk");
 }

@@ -254,6 +254,19 @@ CREATE TABLE IF NOT EXISTS ai_generations (
   output text NOT NULL DEFAULT '',
   created_at timestamp NOT NULL DEFAULT now()
 );
+
+-- 複数店舗・Mr.Venrey取り込み（2026-11-21 追加）
+ALTER TABLE shops ADD COLUMN IF NOT EXISTS login_id text;
+UPDATE shops SET login_id = (1000 + id)::text WHERE login_id IS NULL OR login_id = '';
+CREATE UNIQUE INDEX IF NOT EXISTS shops_login_id ON shops (login_id);
+ALTER TABLE shops ADD COLUMN IF NOT EXISTS password_hash text NOT NULL DEFAULT '';
+ALTER TABLE shops ADD COLUMN IF NOT EXISTS active boolean NOT NULL DEFAULT true;
+ALTER TABLE shops ADD COLUMN IF NOT EXISTS import_source jsonb NOT NULL DEFAULT '{}';
+ALTER TABLE casts ADD COLUMN IF NOT EXISTS source_ref text NOT NULL DEFAULT '';
+ALTER TABLE cast_photos ADD COLUMN IF NOT EXISTS source_ref text NOT NULL DEFAULT '';
+ALTER TABLE templates ADD COLUMN IF NOT EXISTS source_ref text NOT NULL DEFAULT '';
+ALTER TABLE contents ADD COLUMN IF NOT EXISTS source_ref text NOT NULL DEFAULT '';
+CREATE INDEX IF NOT EXISTS casts_shop_source ON casts (shop_id, source_ref);
 `;
 
 import { ALL_SITES } from "../lib/sites";

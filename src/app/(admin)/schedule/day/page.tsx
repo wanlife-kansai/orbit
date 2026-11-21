@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { and, asc, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { getShop, SHOP_ID } from "@/lib/shop";
+import { getShop, currentShopId } from "@/lib/shop";
 import { addDays, businessDate, labelMd } from "@/lib/dates";
 import { PageHeader } from "@/components/PageHeader";
 import { WeekGrid } from "../WeekGrid";
@@ -11,8 +11,8 @@ export default async function DaySchedulePage({ searchParams }: { searchParams: 
   const today = businessDate(shop.dayChangeHour);
   const { d } = await searchParams;
   const date = d && /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : today;
-  const casts = await db.select({ id: schema.casts.id, name: schema.casts.name }).from(schema.casts).where(eq(schema.casts.shopId, SHOP_ID)).orderBy(asc(schema.casts.sortOrder), asc(schema.casts.id));
-  const rows = await db.select().from(schema.schedules).where(and(eq(schema.schedules.shopId, SHOP_ID), eq(schema.schedules.date, date)));
+  const casts = await db.select({ id: schema.casts.id, name: schema.casts.name }).from(schema.casts).where(eq(schema.casts.shopId, (await currentShopId()))).orderBy(asc(schema.casts.sortOrder), asc(schema.casts.id));
+  const rows = await db.select().from(schema.schedules).where(and(eq(schema.schedules.shopId, (await currentShopId())), eq(schema.schedules.date, date)));
   // 出勤者を上に
   const on = new Set(rows.filter((r) => !r.off && r.start).sort((a, b) => a.start.localeCompare(b.start)).map((r) => r.castId));
   const sorted = [...casts.filter((c) => on.has(c.id)), ...casts.filter((c) => !on.has(c.id))];

@@ -1,16 +1,16 @@
 import { asc, desc, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { SHOP_ID } from "@/lib/shop";
+import { currentShopId } from "@/lib/shop";
 import { siteName } from "@/lib/sites";
 
 /** サイトへ更新の画面で使う：女性と、連携済みのサイト */
 export async function pushData(category: string) {
-  const casts = await db.select().from(schema.casts).where(eq(schema.casts.shopId, SHOP_ID)).orderBy(asc(schema.casts.sortOrder), asc(schema.casts.id));
-  const photos = await db.select({ castId: schema.castPhotos.castId }).from(schema.castPhotos).where(eq(schema.castPhotos.shopId, SHOP_ID));
+  const casts = await db.select().from(schema.casts).where(eq(schema.casts.shopId, (await currentShopId()))).orderBy(asc(schema.casts.sortOrder), asc(schema.casts.id));
+  const photos = await db.select({ castId: schema.castPhotos.castId }).from(schema.castPhotos).where(eq(schema.castPhotos.shopId, (await currentShopId())));
   const portals = await db.select().from(schema.portals);
-  const accounts = await db.select().from(schema.shopPortalAccounts).where(eq(schema.shopPortalAccounts.shopId, SHOP_ID));
-  const logs = await db.select().from(schema.syncLogs).where(eq(schema.syncLogs.shopId, SHOP_ID)).orderBy(desc(schema.syncLogs.id)).limit(500);
-  const maps = await db.select().from(schema.castPortalMap).where(eq(schema.castPortalMap.shopId, SHOP_ID));
+  const accounts = await db.select().from(schema.shopPortalAccounts).where(eq(schema.shopPortalAccounts.shopId, (await currentShopId())));
+  const logs = await db.select().from(schema.syncLogs).where(eq(schema.syncLogs.shopId, (await currentShopId()))).orderBy(desc(schema.syncLogs.id)).limit(500);
+  const maps = await db.select().from(schema.castPortalMap).where(eq(schema.castPortalMap.shopId, (await currentShopId())));
   const sites = portals
     .filter((p) => accounts.some((a) => a.portalId === p.id && a.loginId))
     .sort((a, b) => (a.kind === "official" ? -1 : b.kind === "official" ? 1 : 0))

@@ -1,11 +1,10 @@
 "use server";
 import { patchSettings, type ShopSettings } from "@/lib/settings";
 import { revalidatePath } from "next/cache";
-import { after } from "next/server";
 import { deliverWait } from "@/lib/official";
 import { sql } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { SHOP_ID } from "@/lib/shop";
+import { afterForShop, currentShopId } from "@/lib/shop";
 
 type Patch = { status?: "none" | "waiting" | "serving"; until?: string; comment?: string; excluded?: boolean };
 
@@ -18,10 +17,10 @@ export async function setStatus(castId: number, date: string, patch: Patch) {
   if (patch.excluded !== undefined) set.excluded = patch.excluded;
   await db
     .insert(schema.castStatus)
-    .values({ shopId: SHOP_ID, castId, date, ...base })
+    .values({ shopId: (await currentShopId()), castId, date, ...base })
     .onConflictDoUpdate({ target: [schema.castStatus.castId, schema.castStatus.date], set });
   // 状態・終了時刻・除外が変わったときだけ公式サイトへ（コメントだけの変更は送らない）
-  if (patch.status !== undefined || patch.until !== undefined || patch.excluded !== undefined) after(() => deliverWait(castId, date));
+  if (patch.status !== undefined || patch.until !== undefined || patch.excluded !== undefined) await afterForShop(() => deliverWait(castId, date));
   revalidatePath("/sokuhime");
   revalidatePath("/");
 }

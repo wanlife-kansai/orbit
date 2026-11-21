@@ -1,9 +1,8 @@
 "use server";
 import { revalidatePath } from "next/cache";
-import { after } from "next/server";
 import { and, count, eq, gte } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { SHOP_ID } from "@/lib/shop";
+import { afterForShop, currentShopId } from "@/lib/shop";
 import { getSettings } from "@/lib/settings";
 import { generateText } from "@/lib/ai";
 import { autoDeliverCastFields as deliverCastFields } from "@/lib/official";
@@ -17,14 +16,14 @@ function monthStart() {
 
 export async function usage() {
   const s = await getSettings();
-  const [{ n }] = await db.select({ n: count() }).from(schema.aiGenerations).where(and(eq(schema.aiGenerations.shopId, SHOP_ID), gte(schema.aiGenerations.createdAt, monthStart())));
+  const [{ n }] = await db.select({ n: count() }).from(schema.aiGenerations).where(and(eq(schema.aiGenerations.shopId, (await currentShopId())), gte(schema.aiGenerations.createdAt, monthStart())));
   return { used: n, limit: s.aiMonthlyLimit };
 }
 
 export async function generateComment(input: AiInput) {
   const u = await usage();
   if (u.used >= u.limit) return { ok: false, message: `今月の生成回数（${u.limit}回）に達しました`, text: "" };
-  const [c] = await db.select().from(schema.casts).where(and(eq(schema.casts.id, input.castId), eq(schema.casts.shopId, SHOP_ID)));
+  const [c] = await db.select().from(schema.casts).where(and(eq(schema.casts.id, input.castId), eq(schema.casts.shopId, (await currentShopId()))));
   if (!c) return { ok: false, message: "女性を選んでください", text: "" };
   const facts = [
     `名前：${c.name}`,
@@ -45,7 +44,7 @@ export async function generateComment(input: AiInput) {
   const user = `次の情報をもとに、口調「${input.tone}」で約${input.length}文字のお店コメントを書いてください。\n${facts.join("\n")}`;
   try {
     const text = await generateText(system, user, 1200);
-    await db.insert(schema.aiGenerations).values({ shopId: SHOP_ID, castId: c.id, kind: "comment", input: { ...input, castId: String(input.castId) } as unknown as Record<string, string>, output: text });
+    await db.insert(schema.aiGenerations).values({ shopId: (await currentShopId()), castId: c.id, kind: "comment", input: { ...input, castId: String(input.castId) } as unknown as Record<string, string>, output: text });
     revalidatePath("/ai/comments");
     return { ok: true, message: "生成しました", text };
   } catch (e) {
@@ -55,8 +54,8 @@ export async function generateComment(input: AiInput) {
 
 /** 生成したコメントを女性の「お店コメント」に入れる */
 export async function applyToShopComment(castId: number, text: string) {
-  await db.update(schema.casts).set({ shopComment: text }).where(and(eq(schema.casts.id, castId), eq(schema.casts.shopId, SHOP_ID)));
-  after(() => deliverCastFields([castId], "お店コメントを更新"));
+  await db.update(schema.casts).set({ shopComment: text }).where(and(eq(schema.casts.id, castId), eq(schema.casts.shopId, (await currentShopId()))));
+  await afterForShop(() => deliverCastFields([castId], "お店コメントを更新"));
   revalidatePath(`/casts/${castId}`);
   return { ok: true, message: "お店コメントに入れました（公式サイトへも送ります）" };
 }

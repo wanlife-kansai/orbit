@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { and, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { SHOP_ID } from "@/lib/shop";
+import { currentShopId } from "@/lib/shop";
 import { PageHeader } from "@/components/PageHeader";
 import { deleteTemplate, updateTemplate } from "../actions";
 import { LABELS } from "../labels";
@@ -11,7 +11,7 @@ export default async function EditTemplatePage({ params }: { params: Promise<{ i
   const [t] = await db
     .select()
     .from(schema.templates)
-    .where(and(eq(schema.templates.id, id), eq(schema.templates.shopId, SHOP_ID)));
+    .where(and(eq(schema.templates.id, id), eq(schema.templates.shopId, (await currentShopId()))));
   if (!t) notFound();
   return (
     <>

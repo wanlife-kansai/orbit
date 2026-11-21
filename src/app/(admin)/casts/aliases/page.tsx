@@ -1,6 +1,6 @@
 import { asc, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { SHOP_ID, getShop } from "@/lib/shop";
+import { currentShopId, getShop } from "@/lib/shop";
 import { SITES } from "@/lib/sites";
 import { targetSitesOf } from "@/lib/targets";
 import { PageHeader } from "@/components/PageHeader";
@@ -12,7 +12,7 @@ export default async function AliasesPage() {
   const list = await db
     .select({ id: schema.casts.id, name: schema.casts.name, romaji: schema.casts.romaji, siteFields: schema.casts.siteFields })
     .from(schema.casts)
-    .where(eq(schema.casts.shopId, SHOP_ID))
+    .where(eq(schema.casts.shopId, (await currentShopId())))
     .orderBy(asc(schema.casts.sortOrder), asc(schema.casts.id));
   return (
     <>

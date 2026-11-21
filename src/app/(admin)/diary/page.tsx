@@ -1,6 +1,6 @@
 import { asc, desc, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { SHOP_ID } from "@/lib/shop";
+import { currentShopId } from "@/lib/shop";
 import { PageHeader } from "@/components/PageHeader";
 import { getSettings } from "@/lib/settings";
 import { CATALOG } from "@/lib/contentCatalog";
@@ -9,8 +9,8 @@ import { DiaryPanel } from "./DiaryPanel";
 
 export default async function DiaryPage() {
   const s = await getSettings();
-  const items = await db.select().from(schema.diaryItems).where(eq(schema.diaryItems.shopId, SHOP_ID)).orderBy(desc(schema.diaryItems.id)).limit(300);
-  const casts = await db.select({ id: schema.casts.id, name: schema.casts.name }).from(schema.casts).where(eq(schema.casts.shopId, SHOP_ID)).orderBy(asc(schema.casts.sortOrder));
+  const items = await db.select().from(schema.diaryItems).where(eq(schema.diaryItems.shopId, (await currentShopId()))).orderBy(desc(schema.diaryItems.id)).limit(300);
+  const casts = await db.select({ id: schema.casts.id, name: schema.casts.name }).from(schema.casts).where(eq(schema.casts.shopId, (await currentShopId()))).orderBy(asc(schema.casts.sortOrder));
   const diarySlots = CATALOG.filter((c) => c.kind === "写メ");
   const sources = ALL_SITES.filter((x) => diarySlots.some((d) => d.site === x.code));
   return (

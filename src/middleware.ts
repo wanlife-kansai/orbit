@@ -1,9 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { AUTH_COOKIE, credentials, tokenFor } from "@/lib/auth";
+import { AUTH_COOKIE, verifySession } from "@/lib/auth";
 
 export async function middleware(req: NextRequest) {
-  const { id, password } = credentials();
-  const ok = !!password && req.cookies.get(AUTH_COOKIE)?.value === (await tokenFor(id, password));
+  const ok = !!(await verifySession(req.cookies.get(AUTH_COOKIE)?.value));
   if (ok) return NextResponse.next();
   const url = req.nextUrl.clone();
   url.pathname = "/login";

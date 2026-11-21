@@ -13,6 +13,7 @@ const GROUPS: { title: string; items: Item[] }[] = [
     items: [
       { href: "/accounts", label: "ID・PASS登録" },
       { href: "/portals", label: "公式サイト連携" },
+      { href: "/import", label: "Mr.Venreyから取り込み" },
     ],
   },
   {
@@ -70,7 +71,7 @@ const GROUPS: { title: string; items: Item[] }[] = [
   },
 ];
 
-export function Sidebar({ shopName, shopCode }: { shopName: string; shopCode: string }) {
+export function Sidebar({ shopName, shopCode, master = false }: { shopName: string; shopCode: string; master?: boolean }) {
   const path = usePathname();
   const [open, setOpen] = useState(false);
   const SUB = ["/casts/new", "/casts/sort", "/casts/aliases", "/casts/status", "/schedule/day", "/schedule/month"];
@@ -96,6 +97,11 @@ export function Sidebar({ shopName, shopCode }: { shopName: string; shopCode: st
         <div className="mx-3 mt-4 rounded-lg bg-zinc-800/60 px-3 py-2.5 ring-1 ring-zinc-700/60">
           <div className="text-sm font-semibold">{shopName} 様</div>
           <div className="mt-0.5 text-[11px] text-zinc-400">ID: {shopCode}</div>
+          {master && (
+            <Link href="/master" onClick={() => setOpen(false)} className="mt-2 block rounded bg-amber-500/15 px-2 py-1 text-center text-[11px] text-amber-200 ring-1 ring-amber-500/30 hover:bg-amber-500/25">
+              運営：店舗の追加・切り替え
+            </Link>
+          )}
         </div>
         <nav className="px-2 pb-6">
           {GROUPS.map((g, i) => (

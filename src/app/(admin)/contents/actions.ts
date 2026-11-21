@@ -1,7 +1,7 @@
 "use server";
 import { and, eq, inArray } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { SHOP_ID } from "@/lib/shop";
+import { currentShopId } from "@/lib/shop";
 import { catalogItem } from "@/lib/contentCatalog";
 import { siteName } from "@/lib/sites";
 import { canPost, postContent } from "@/lib/connectors";
@@ -43,7 +43,7 @@ export async function removeDxNews(id: string, title: string) {
 
 // ── コンテンツ更新（枠の管理・タイマー） ─────────────────
 const C = schema.contents;
-const mine = (id: number) => and(eq(C.id, id), eq(C.shopId, SHOP_ID));
+const mine = async (id: number) => and(eq(C.id, id), eq(C.shopId, await currentShopId()));
 
 export async function addContents(keys: string[]) {
   for (const k of keys) {
@@ -52,7 +52,7 @@ export async function addContents(keys: string[]) {
     if (!it) continue;
     await db
       .insert(C)
-      .values({ shopId: SHOP_ID, site, slot, name: `${siteName(site)}${it.label}`, kind: it.kind })
+      .values({ shopId: (await currentShopId()), site, slot, name: `${siteName(site)}${it.label}`, kind: it.kind })
       .onConflictDoNothing();
   }
   revalidatePath("/contents");
@@ -60,13 +60,13 @@ export async function addContents(keys: string[]) {
 
 export async function removeContents(ids: number[]) {
   if (!ids.length) return;
-  await db.delete(C).where(and(eq(C.shopId, SHOP_ID), inArray(C.id, ids)));
+  await db.delete(C).where(and(eq(C.shopId, (await currentShopId())), inArray(C.id, ids)));
   revalidatePath("/contents");
 }
 
 export async function setTimer(id: number, on: boolean) {
   if (on) {
-    const [c] = await db.select().from(C).where(mine(id));
+    const [c] = await db.select().from(C).where(await mine(id));
     if (!c) return { ok: false, message: "見つかりません" };
     if (!canPost(c.site, c.slot)) return { ok: false, message: `${c.name}：このサイトへの自動投稿は接続準備中のため、タイマーは開始できません（内容・予定は保存されています）` };
     if (c.mode === "timer" && !c.entries.length) return { ok: false, message: "内容が1件もありません。編集から登録してください" };
@@ -75,7 +75,7 @@ export async function setTimer(id: number, on: boolean) {
     revalidatePath("/contents");
     return next ? { ok: true, message: "タイマーを開始しました" } : { ok: false, message: "更新できる時間帯がありません（曜日・時間帯を確認してください）" };
   }
-  await db.update(C).set({ active: false, nextRunAt: null }).where(mine(id));
+  await db.update(C).set({ active: false, nextRunAt: null }).where(await mine(id));
   revalidatePath("/contents");
   return { ok: true, message: "タイマーを止めました" };
 }
@@ -116,8 +116,8 @@ export async function saveContent(id: number, f: ContentForm) {
     memo: f.memo.slice(0, 500),
     groupName: f.groupName.slice(0, 50),
   };
-  await db.update(C).set(set).where(mine(id));
-  const [c] = await db.select().from(C).where(mine(id));
+  await db.update(C).set(set).where(await mine(id));
+  const [c] = await db.select().from(C).where(await mine(id));
   if (c?.active) await startTimer(id); // 稼働中なら次回時刻を引き直す
   revalidatePath("/contents");
   revalidatePath(`/contents/${id}`);
@@ -126,10 +126,10 @@ export async function saveContent(id: number, f: ContentForm) {
 
 /** 直接入力：今すぐ1件送る */
 export async function sendNow(id: number, entry: ContentEntry) {
-  const [c] = await db.select().from(C).where(mine(id));
+  const [c] = await db.select().from(C).where(await mine(id));
   if (!c) return { ok: false, message: "見つかりません" };
   const r = await postContent(c.site, c.slot, entry);
-  await db.update(C).set({ lastRunAt: new Date(), lastResult: r.ok ? `成功：${entry.title}` : `失敗：${r.message}` }).where(mine(id));
+  await db.update(C).set({ lastRunAt: new Date(), lastResult: r.ok ? `成功：${entry.title}` : `失敗：${r.message}` }).where(await mine(id));
   revalidatePath("/contents");
   revalidatePath("/logs");
   return { ok: r.ok, message: r.ok ? "サイトへ送りました" : r.message };

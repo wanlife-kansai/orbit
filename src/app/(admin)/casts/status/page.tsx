@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { asc, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { SHOP_ID } from "@/lib/shop";
+import { currentShopId } from "@/lib/shop";
 import { PageHeader } from "@/components/PageHeader";
 import { isOffFor } from "@/lib/official";
 import { ALL_SITES } from "@/lib/sites";
@@ -11,10 +11,10 @@ const COLOR: Record<Cell, string> = { 登録済: "bg-emerald-600", 未登録: "b
 
 export default async function CastStatusPage({ searchParams }: { searchParams: Promise<{ diff?: string }> }) {
   const { diff } = await searchParams;
-  const casts = await db.select().from(schema.casts).where(eq(schema.casts.shopId, SHOP_ID)).orderBy(asc(schema.casts.sortOrder), asc(schema.casts.id));
+  const casts = await db.select().from(schema.casts).where(eq(schema.casts.shopId, (await currentShopId()))).orderBy(asc(schema.casts.sortOrder), asc(schema.casts.id));
   const portals = await db.select().from(schema.portals);
-  const accounts = await db.select().from(schema.shopPortalAccounts).where(eq(schema.shopPortalAccounts.shopId, SHOP_ID));
-  const maps = await db.select().from(schema.castPortalMap).where(eq(schema.castPortalMap.shopId, SHOP_ID));
+  const accounts = await db.select().from(schema.shopPortalAccounts).where(eq(schema.shopPortalAccounts.shopId, (await currentShopId())));
+  const maps = await db.select().from(schema.castPortalMap).where(eq(schema.castPortalMap.shopId, (await currentShopId())));
   const cols = portals
     .filter((p) => accounts.some((a) => a.portalId === p.id && a.loginId))
     .sort((a, b) => (a.kind === "official" ? -1 : b.kind === "official" ? 1 : a.name.localeCompare(b.name, "ja")))

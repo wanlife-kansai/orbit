@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { and, asc, eq, max } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { SHOP_ID } from "@/lib/shop";
+import { currentShopId } from "@/lib/shop";
 import { PHOTO_MAX, THUMB_MAX } from "@/lib/castFields";
 import { removeImage, saveImage } from "@/lib/storage";
 
@@ -10,7 +10,7 @@ type Ctx = { params: Promise<{ id: string }> };
 
 async function castOf(ctx: Ctx) {
   const id = Number((await ctx.params).id);
-  const [c] = await db.select({ id: casts.id }).from(casts).where(and(eq(casts.id, id), eq(casts.shopId, SHOP_ID)));
+  const [c] = await db.select({ id: casts.id }).from(casts).where(and(eq(casts.id, id), eq(casts.shopId, (await currentShopId()))));
   return c?.id ?? null;
 }
 const list = (castId: number) =>
@@ -38,8 +38,8 @@ export async function POST(req: Request, ctx: Ctx) {
   let order = m ?? 0;
   try {
     for (const f of files) {
-      const url = await saveImage(f, `shop${SHOP_ID}/cast${castId}`);
-      await db.insert(castPhotos).values({ shopId: SHOP_ID, castId, kind, url, sortOrder: ++order });
+      const url = await saveImage(f, `shop${(await currentShopId())}/cast${castId}`);
+      await db.insert(castPhotos).values({ shopId: (await currentShopId()), castId, kind, url, sortOrder: ++order });
     }
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "保存できませんでした", photos: await list(castId) }, { status: 400 });

@@ -1,6 +1,6 @@
 import { and, asc, eq, isNotNull, lte } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { SHOP_ID } from "./shop";
+import { allShops, currentShopId, withShop } from "./shop";
 import { getSettings, type ShopSettings } from "./settings";
 import { minutesInBusinessDay } from "./dates";
 import { postContent } from "./connectors";
@@ -66,16 +66,26 @@ function entryFor(c: Content, at: Date, dch: number) {
   return c.entries[c.cursor % c.entries.length];
 }
 
-/** 期限が来たコンテンツを更新する（cron・画面表示のたびに呼ばれる） */
+/** 期限が来たコンテンツを更新する（cron・画面表示のたびに呼ばれる）。全店舗を順番に回る */
 export async function runDue(limit = 10) {
-  const [shop] = await db.select().from(schema.shops).where(eq(schema.shops.id, SHOP_ID));
+  const out: { shopId: number; id: number; name: string; ok: boolean; message: string }[] = [];
+  for (const shop of await allShops()) {
+    if (!shop.active) continue;
+    const done = await withShop(shop.id, () => runDueForShop(limit));
+    out.push(...done.map((d) => ({ shopId: shop.id, ...d })));
+  }
+  return out;
+}
+
+async function runDueForShop(limit: number) {
+  const [shop] = await db.select().from(schema.shops).where(eq(schema.shops.id, (await currentShopId())));
   if (!shop) return [];
   const s = await getSettings();
   const now = new Date();
   const due = await db
     .select()
     .from(schema.contents)
-    .where(and(eq(schema.contents.shopId, SHOP_ID), eq(schema.contents.active, true), isNotNull(schema.contents.nextRunAt), lte(schema.contents.nextRunAt, now)))
+    .where(and(eq(schema.contents.shopId, (await currentShopId())), eq(schema.contents.active, true), isNotNull(schema.contents.nextRunAt), lte(schema.contents.nextRunAt, now)))
     .orderBy(asc(schema.contents.nextRunAt))
     .limit(limit);
   const out: { id: number; name: string; ok: boolean; message: string }[] = [];
@@ -108,8 +118,8 @@ export async function runDue(limit = 10) {
 
 /** タイマー開始：次回時刻を決めて動かす */
 export async function startTimer(id: number, immediate = false) {
-  const [c] = await db.select().from(schema.contents).where(and(eq(schema.contents.id, id), eq(schema.contents.shopId, SHOP_ID)));
-  const [shop] = await db.select().from(schema.shops).where(eq(schema.shops.id, SHOP_ID));
+  const [c] = await db.select().from(schema.contents).where(and(eq(schema.contents.id, id), eq(schema.contents.shopId, (await currentShopId()))));
+  const [shop] = await db.select().from(schema.shops).where(eq(schema.shops.id, (await currentShopId())));
   if (!c || !shop) return null;
   const s = await getSettings();
   const now = new Date();

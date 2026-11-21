@@ -1,6 +1,5 @@
 import { Sidebar } from "@/components/Sidebar";
-import { getShop } from "@/lib/shop";
-import { credentials } from "@/lib/auth";
+import { getShop, isMaster } from "@/lib/shop";
 import { after } from "next/server";
 import { runDue } from "@/lib/contentRunner";
 
@@ -12,7 +11,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   after(() => runDue(5).catch((e) => console.error("[runDue]", e)));
   return (
     <div className="md:flex min-h-screen">
-      <Sidebar shopName={shop.name} shopCode={credentials().id} />
+      <Sidebar shopName={shop.name} shopCode={shop.loginId ?? String(shop.id)} master={await isMaster()} />
       <main className="flex-1 min-w-0 p-4 md:p-8">{children}</main>
     </div>
   );

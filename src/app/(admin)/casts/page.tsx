@@ -1,6 +1,6 @@
 import { and, asc, eq, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { SHOP_ID } from "@/lib/shop";
+import { currentShopId } from "@/lib/shop";
 import { PageHeader } from "@/components/PageHeader";
 import { getConn, getOfficialPortal } from "@/lib/official";
 import { CastList, type Row } from "./CastList";
@@ -9,24 +9,24 @@ export default async function CastsPage() {
   const list = await db
     .select()
     .from(schema.casts)
-    .where(eq(schema.casts.shopId, SHOP_ID))
+    .where(eq(schema.casts.shopId, (await currentShopId())))
     .orderBy(asc(schema.casts.sortOrder), asc(schema.casts.id));
   const counts = await db
     .select({ castId: schema.castPhotos.castId, kind: schema.castPhotos.kind, n: sql<number>`count(*)::int` })
     .from(schema.castPhotos)
-    .where(eq(schema.castPhotos.shopId, SHOP_ID))
+    .where(eq(schema.castPhotos.shopId, (await currentShopId())))
     .groupBy(schema.castPhotos.castId, schema.castPhotos.kind);
   const firsts = await db
     .select({ castId: schema.castPhotos.castId, kind: schema.castPhotos.kind, url: schema.castPhotos.url, sortOrder: schema.castPhotos.sortOrder })
     .from(schema.castPhotos)
-    .where(eq(schema.castPhotos.shopId, SHOP_ID))
+    .where(eq(schema.castPhotos.shopId, (await currentShopId())))
     .orderBy(asc(schema.castPhotos.sortOrder), asc(schema.castPhotos.id));
   const official = await getOfficialPortal();
   const links = official
     ? await db
         .select({ castId: schema.castPortalMap.castId, remoteId: schema.castPortalMap.remoteId })
         .from(schema.castPortalMap)
-        .where(and(eq(schema.castPortalMap.shopId, SHOP_ID), eq(schema.castPortalMap.portalId, official.id)))
+        .where(and(eq(schema.castPortalMap.shopId, (await currentShopId())), eq(schema.castPortalMap.portalId, official.id)))
     : [];
   const linked = new Set(links.filter((l) => l.remoteId).map((l) => l.castId));
   const conn = await getConn();

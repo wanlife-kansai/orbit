@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { and, asc, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { SHOP_ID, getShop } from "@/lib/shop";
+import { currentShopId, getShop } from "@/lib/shop";
 import { targetSitesOf } from "@/lib/targets";
 import { businessDate } from "@/lib/dates";
 import { CastEditor } from "../editor/CastEditor";
@@ -14,7 +14,7 @@ export default async function EditCastPage({ params }: { params: Promise<{ id: s
   const [cast] = await db
     .select()
     .from(schema.casts)
-    .where(and(eq(schema.casts.id, id), eq(schema.casts.shopId, SHOP_ID)));
+    .where(and(eq(schema.casts.id, id), eq(schema.casts.shopId, (await currentShopId()))));
   if (!cast) notFound();
   const photos = await db
     .select({ id: schema.castPhotos.id, kind: schema.castPhotos.kind, url: schema.castPhotos.url, sortOrder: schema.castPhotos.sortOrder })

@@ -2,7 +2,7 @@
 import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { SHOP_ID } from "@/lib/shop";
+import { currentShopId } from "@/lib/shop";
 import { patchSettings, type ShopSettings } from "@/lib/settings";
 
 export type ShopBasics = { name: string; officialUrl: string; email: string; dayChangeHour: number };
@@ -18,7 +18,7 @@ export async function saveSettings(basics: ShopBasics | null, patch: Partial<Sho
         email: basics.email.trim().slice(0, 100),
         dayChangeHour: Number.isInteger(h) && h >= 0 && h <= 12 ? h : 3,
       })
-      .where(eq(schema.shops.id, SHOP_ID));
+      .where(eq(schema.shops.id, (await currentShopId())));
   }
   await patchSettings(patch);
   revalidatePath("/", "layout");

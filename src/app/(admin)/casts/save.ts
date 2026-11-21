@@ -1,9 +1,8 @@
 "use server";
 import { revalidatePath } from "next/cache";
-import { after } from "next/server";
 import { and, asc, eq, max, ne } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { SHOP_ID } from "@/lib/shop";
+import { afterForShop, currentShopId } from "@/lib/shop";
 import { autoDeliverCast as deliverCast } from "@/lib/official";
 import { COMMENT_MAX, CUPS, QA_MAX, QA_Q_MAX, TEXT_MAX } from "@/lib/castFields";
 import type { CastInput } from "./types";
@@ -105,19 +104,19 @@ export async function saveCastFull(id: number | null, input: CastInput): Promise
     const r = await db
       .update(casts)
       .set(v)
-      .where(and(eq(casts.id, castId), eq(casts.shopId, SHOP_ID)))
+      .where(and(eq(casts.id, castId), eq(casts.shopId, (await currentShopId()))))
       .returning({ id: casts.id });
     if (!r.length) return { ok: false, message: "女性が見つかりません" };
   } else {
-    const [{ m }] = await db.select({ m: max(casts.sortOrder) }).from(casts).where(eq(casts.shopId, SHOP_ID));
+    const [{ m }] = await db.select({ m: max(casts.sortOrder) }).from(casts).where(eq(casts.shopId, (await currentShopId())));
     const [row] = await db
       .insert(casts)
-      .values({ ...v, shopId: SHOP_ID, sortOrder: (m ?? 0) + 1 })
+      .values({ ...v, shopId: (await currentShopId()), sortOrder: (m ?? 0) + 1 })
       .returning({ id: casts.id });
     castId = row.id;
   }
   const cid = castId;
-  after(() => deliverCast(cid));
+  await afterForShop(() => deliverCast(cid));
   revalidatePath("/casts");
   revalidatePath("/");
   return { ok: true, id: cid, message: "保存しました" };
@@ -128,7 +127,7 @@ export async function listCastsWithQa(exceptId: number | null) {
   const rows = await db
     .select({ id: casts.id, name: casts.name, qa: casts.qa })
     .from(casts)
-    .where(exceptId ? and(eq(casts.shopId, SHOP_ID), ne(casts.id, exceptId)) : eq(casts.shopId, SHOP_ID))
+    .where(exceptId ? and(eq(casts.shopId, (await currentShopId())), ne(casts.id, exceptId)) : eq(casts.shopId, (await currentShopId())))
     .orderBy(asc(casts.sortOrder));
   return rows.filter((r) => r.qa.length > 0).map((r) => ({ id: r.id, name: r.name, qa: r.qa }));
 }

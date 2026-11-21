@@ -15,7 +15,7 @@ export function seedStatements(shopName = "Biollante 梅田店") {
     ["syame", "写メ日記", "写メ", 0, "未確認"],
   ];
   return [
-    `INSERT INTO shops (id, name, day_change_hour, memo) VALUES (1, ${q(shopName)}, 6, ${q("業務連絡など、ご自由にお使いください")})`,
+    `INSERT INTO shops (id, login_id, name, day_change_hour, memo) VALUES (1, '1001', ${q(shopName)}, 6, ${q("業務連絡など、ご自由にお使いください")})`,
     `SELECT setval('shops_id_seq', (SELECT max(id) FROM shops))`,
     ...tpls.map(([t, b, l]) => `INSERT INTO templates (shop_id, title, body, label) VALUES (1, ${q(t)}, ${q(b)}, ${q(l)})`),
     `INSERT INTO portals (code, name, kind, login_url, day_change_hour, supports) VALUES ('fuzokudx', '風俗DX', 'portal', 'https://fuzokudx.com/shopmanager.php/', 6, '["速報","即姫","出勤","女性","写メ"]') ON CONFLICT (code) DO NOTHING`,

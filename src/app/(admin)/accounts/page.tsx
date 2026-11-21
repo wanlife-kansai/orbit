@@ -1,7 +1,7 @@
 import { and, eq, ne } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { PageHeader } from "@/components/PageHeader";
-import { SHOP_ID } from "@/lib/shop";
+import { currentShopId } from "@/lib/shop";
 import { ALL_SITES } from "@/lib/sites";
 import { CATALOG } from "@/lib/contentCatalog";
 import { AccountRow } from "./AccountRow";
@@ -9,7 +9,7 @@ import { AccountRow } from "./AccountRow";
 export default async function AccountsPage({ searchParams }: { searchParams: Promise<{ f?: string; q?: string }> }) {
   const { f = "all", q = "" } = await searchParams;
   const portals = await db.select().from(schema.portals).where(ne(schema.portals.kind, "official"));
-  const accounts = await db.select().from(schema.shopPortalAccounts).where(eq(schema.shopPortalAccounts.shopId, SHOP_ID));
+  const accounts = await db.select().from(schema.shopPortalAccounts).where(eq(schema.shopPortalAccounts.shopId, (await currentShopId())));
   const byCode = new Map(portals.map((p) => [p.code, p]));
 
   const rows = ALL_SITES.filter((s) => s.code !== "official")

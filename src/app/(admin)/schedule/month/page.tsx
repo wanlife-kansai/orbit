@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { and, asc, eq, gte, lte } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { getShop, SHOP_ID } from "@/lib/shop";
+import { getShop, currentShopId } from "@/lib/shop";
 import { businessDate } from "@/lib/dates";
 import { PageHeader } from "@/components/PageHeader";
 import { MonthEditor } from "./MonthEditor";
@@ -17,7 +17,7 @@ export default async function MonthSchedulePage({ searchParams }: { searchParams
   const today = businessDate(shop.dayChangeHour);
   const sp = await searchParams;
   const month = sp.m && /^\d{4}-\d{2}$/.test(sp.m) ? sp.m : today.slice(0, 7);
-  const casts = await db.select({ id: schema.casts.id, name: schema.casts.name, base: schema.casts.baseSchedule }).from(schema.casts).where(eq(schema.casts.shopId, SHOP_ID)).orderBy(asc(schema.casts.sortOrder), asc(schema.casts.id));
+  const casts = await db.select({ id: schema.casts.id, name: schema.casts.name, base: schema.casts.baseSchedule }).from(schema.casts).where(eq(schema.casts.shopId, (await currentShopId()))).orderBy(asc(schema.casts.sortOrder), asc(schema.casts.id));
   const castId = Number(sp.c) || casts[0]?.id || 0;
   const cast = casts.find((c) => c.id === castId);
   const [y, m] = month.split("-").map(Number);

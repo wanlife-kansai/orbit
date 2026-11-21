@@ -8,7 +8,7 @@ import { AutoPanel } from "./AutoPanel";
 import { getSettings } from "@/lib/settings";
 import { and, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { SHOP_ID } from "@/lib/shop";
+import { currentShopId } from "@/lib/shop";
 import { CATALOG } from "@/lib/contentCatalog";
 
 export default async function SokuhimePage() {
@@ -17,7 +17,7 @@ export default async function SokuhimePage() {
   const waiting = roster.filter((r) => r.status === "waiting").length;
   const serving = roster.filter((r) => r.status === "serving").length;
   const st = await getSettings();
-  const targets = await db.select().from(schema.contents).where(and(eq(schema.contents.shopId, SHOP_ID), eq(schema.contents.kind, "即姫")));
+  const targets = await db.select().from(schema.contents).where(and(eq(schema.contents.shopId, (await currentShopId())), eq(schema.contents.kind, "即姫")));
 
   return (
     <>

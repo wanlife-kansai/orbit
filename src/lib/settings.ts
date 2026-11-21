@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { SHOP_ID } from "./shop";
+import { currentShopId } from "./shop";
 
 /** 設定画面の内容（Venrey「設定」の5タブ） */
 export type ShopSettings = {
@@ -92,13 +92,13 @@ export function mergeSettings(raw: Record<string, unknown> | null | undefined): 
 }
 
 export async function getSettings() {
-  const [s] = await db.select({ settings: schema.shops.settings }).from(schema.shops).where(eq(schema.shops.id, SHOP_ID));
+  const [s] = await db.select({ settings: schema.shops.settings }).from(schema.shops).where(eq(schema.shops.id, (await currentShopId())));
   return mergeSettings(s?.settings);
 }
 
 export async function patchSettings(patch: Partial<ShopSettings>) {
   const cur = await getSettings();
   const next = { ...cur, ...patch, diary: { ...cur.diary, ...(patch.diary ?? {}) } };
-  await db.update(schema.shops).set({ settings: next as unknown as Record<string, unknown> }).where(eq(schema.shops.id, SHOP_ID));
+  await db.update(schema.shops).set({ settings: next as unknown as Record<string, unknown> }).where(eq(schema.shops.id, (await currentShopId())));
   return next;
 }

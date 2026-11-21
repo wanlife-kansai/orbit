@@ -22,8 +22,18 @@ export const shops = pgTable("shops", {
   targetSites: jsonb("target_sites").$type<string[]>().notNull().default([]),
   // 設定画面（基本・出勤・女性・即姫・その他）の内容。型は lib/settings.ts
   settings: jsonb("settings").$type<Record<string, unknown>>().notNull().default({}),
+  // ログインID（例：1001）とパスワード（scrypt）。運営画面で店舗ごとに発行します
+  loginId: text("login_id"),
+  passwordHash: text("password_hash").notNull().default(""),
+  active: boolean("active").notNull().default(true),
+  // 取り込み元（Mr.Venrey など）の接続情報と最終取り込み結果。パスワードは暗号化して保存
+  importSource: jsonb("import_source").$type<ImportSource>().notNull().default({}),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
+
+export type ImportSource = {
+  venrey?: { loginId: string; passwordEnc: string; lastImportAt?: string; lastSummary?: string };
+};
 
 // ── 女性（キャスト） ─────────────────────────────
 export type PrItem = { title: string; body: string };
@@ -85,6 +95,8 @@ export const casts = pgTable("casts", {
   // 基本出勤（曜日 0=日〜6=土 → {start,end} / off）。月間スケジュールの「基本出勤を適用」で使う
   baseSchedule: jsonb("base_schedule").$type<Record<string, { start: string; end: string; off?: boolean }>>().notNull().default({}),
   memo: text("memo").notNull().default(""),
+  // 取り込み元のID（例：venrey:3031045）。取り込み直しで重複させないため
+  sourceRef: text("source_ref").notNull().default(""),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -130,6 +142,7 @@ export const templates = pgTable("templates", {
   memo: text("memo").notNull().default(""),
   groupName: text("group_name").notNull().default(""),
   sortOrder: integer("sort_order").notNull().default(0),
+  sourceRef: text("source_ref").notNull().default(""),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -220,6 +233,7 @@ export const castPhotos = pgTable("cast_photos", {
   kind: text("kind").notNull().default("photo"),
   url: text("url").notNull(),
   sortOrder: integer("sort_order").notNull().default(0),
+  sourceRef: text("source_ref").notNull().default(""),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -252,6 +266,7 @@ export const contents = pgTable("contents", {
   lastResult: text("last_result").notNull().default(""),
   memo: text("memo").notNull().default(""),
   sortOrder: integer("sort_order").notNull().default(0),
+  sourceRef: text("source_ref").notNull().default(""),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

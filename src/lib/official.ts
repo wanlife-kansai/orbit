@@ -1,7 +1,7 @@
 import { and, desc, eq } from "drizzle-orm";
 import { getSettings } from "./settings";
 import { db, schema } from "@/db";
-import { SHOP_ID, getShop } from "./shop";
+import { currentShopId, getShop } from "./shop";
 import { decrypt } from "./secret";
 import { addDays, businessDate } from "./dates";
 
@@ -28,7 +28,7 @@ export async function getConn(): Promise<Conn | null> {
   const [acc] = await db
     .select()
     .from(shopPortalAccounts)
-    .where(and(eq(shopPortalAccounts.shopId, SHOP_ID), eq(shopPortalAccounts.portalId, portal.id)));
+    .where(and(eq(shopPortalAccounts.shopId, (await currentShopId())), eq(shopPortalAccounts.portalId, portal.id)));
   if (!acc || !acc.loginId || !acc.passwordEnc) return null;
   let key = "";
   try {
@@ -72,7 +72,7 @@ function errorKind(r: Result) {
 
 async function log(conn: Conn, what: string, r: Result) {
   await db.insert(syncLogs).values({
-    shopId: SHOP_ID,
+    shopId: (await currentShopId()),
     portalId: conn.portalId,
     ok: r.ok,
     errorKind: r.ok ? "" : errorKind(r),
@@ -185,7 +185,7 @@ async function remoteIdOf(conn: Conn, castId: number) {
 /** 女性を公式サイトへ（つながっていなければ新しく追加） */
 export function deliverCast(castId: number) {
   return safely(async (conn) => {
-    const [c] = await db.select().from(casts).where(and(eq(casts.id, castId), eq(casts.shopId, SHOP_ID)));
+    const [c] = await db.select().from(casts).where(and(eq(casts.id, castId), eq(casts.shopId, (await currentShopId()))));
     if (!c || isOffFor(c, "official")) return;
     const rid = await remoteIdOf(conn, castId);
     if (rid) {
@@ -201,7 +201,7 @@ export function deliverCast(castId: number) {
     if (r.ok && r.data?.id) {
       await db
         .insert(castPortalMap)
-        .values({ shopId: SHOP_ID, castId, portalId: conn.portalId, remoteId: String(r.data.id) })
+        .values({ shopId: (await currentShopId()), castId, portalId: conn.portalId, remoteId: String(r.data.id) })
         .onConflictDoUpdate({ target: [castPortalMap.castId, castPortalMap.portalId], set: { remoteId: String(r.data.id) } });
     }
   });
@@ -347,7 +347,7 @@ export async function importFromOfficial(opts: { replaceAll: boolean }) {
 
   if (opts.replaceAll) {
     // ORBITの女性を全部消して、公式サイトの女性だけにする（公式サイト側は何も変わらない）
-    const local = await db.select({ id: casts.id }).from(casts).where(eq(casts.shopId, SHOP_ID));
+    const local = await db.select({ id: casts.id }).from(casts).where(eq(casts.shopId, (await currentShopId())));
     for (const l of local) {
       await db.delete(schedules).where(eq(schedules.castId, l.id));
       await db.delete(castStatus).where(eq(castStatus.castId, l.id));
@@ -405,8 +405,8 @@ export async function importFromOfficial(opts: { replaceAll: boolean }) {
       await db.update(casts).set(fields).where(eq(casts.id, localId));
       updated++;
     } else {
-      const [row] = await db.insert(casts).values({ ...fields, shopId: SHOP_ID }).returning({ id: casts.id });
-      await db.insert(castPortalMap).values({ shopId: SHOP_ID, castId: row.id, portalId: conn.portalId, remoteId: String(r.id) });
+      const [row] = await db.insert(casts).values({ ...fields, shopId: (await currentShopId()) }).returning({ id: casts.id });
+      await db.insert(castPortalMap).values({ shopId: (await currentShopId()), castId: row.id, portalId: conn.portalId, remoteId: String(r.id) });
       byRemote.set(String(r.id), row.id);
       created++;
     }
@@ -425,7 +425,7 @@ export async function importFromOfficial(opts: { replaceAll: boolean }) {
       const off = s.status === "off";
       await db
         .insert(schedules)
-        .values({ shopId: SHOP_ID, castId, date: s.date, start: off ? "" : fromRemoteTime(s.start), end: off ? "" : fromRemoteTime(s.end), off })
+        .values({ shopId: (await currentShopId()), castId, date: s.date, start: off ? "" : fromRemoteTime(s.start), end: off ? "" : fromRemoteTime(s.end), off })
         .onConflictDoUpdate({
           target: [schedules.castId, schedules.date],
           set: { start: off ? "" : fromRemoteTime(s.start), end: off ? "" : fromRemoteTime(s.end), off },
@@ -436,7 +436,7 @@ export async function importFromOfficial(opts: { replaceAll: boolean }) {
         const until = s.waitStatus === "time" ? fromRemoteTime(s.availableFrom) : "";
         await db
           .insert(castStatus)
-          .values({ shopId: SHOP_ID, castId, date: from, status, until })
+          .values({ shopId: (await currentShopId()), castId, date: from, status, until })
           .onConflictDoUpdate({ target: [castStatus.castId, castStatus.date], set: { status, until } });
       }
     }
@@ -450,7 +450,7 @@ export async function importFromOfficial(opts: { replaceAll: boolean }) {
 export async function linkedCount() {
   const portal = await getOfficialPortal();
   if (!portal) return 0;
-  const rows = await db.select({ id: castPortalMap.id }).from(castPortalMap).where(and(eq(castPortalMap.shopId, SHOP_ID), eq(castPortalMap.portalId, portal.id)));
+  const rows = await db.select({ id: castPortalMap.id }).from(castPortalMap).where(and(eq(castPortalMap.shopId, (await currentShopId())), eq(castPortalMap.portalId, portal.id)));
   return rows.length;
 }
 
@@ -459,14 +459,14 @@ export async function recentLogs(limit = 100, category?: string) {
     .select({ id: syncLogs.id, ok: syncLogs.ok, errorKind: syncLogs.errorKind, message: syncLogs.message, createdAt: syncLogs.createdAt, portal: portals.name, category: syncLogs.category })
     .from(syncLogs)
     .leftJoin(portals, eq(portals.id, syncLogs.portalId))
-    .where(category ? and(eq(syncLogs.shopId, SHOP_ID), eq(syncLogs.category, category)) : eq(syncLogs.shopId, SHOP_ID))
+    .where(category ? and(eq(syncLogs.shopId, (await currentShopId())), eq(syncLogs.category, category)) : eq(syncLogs.shopId, (await currentShopId())))
     .orderBy(desc(syncLogs.id))
     .limit(limit);
 }
 
 /** 接続先が変わったら、女性のつながり（どの子がどの子か）をリセットする */
 export async function resetLinks(portalId: number) {
-  await db.delete(castPortalMap).where(and(eq(castPortalMap.shopId, SHOP_ID), eq(castPortalMap.portalId, portalId)));
+  await db.delete(castPortalMap).where(and(eq(castPortalMap.shopId, (await currentShopId())), eq(castPortalMap.portalId, portalId)));
 }
 
 /* ---------- オートシンクロ（設定 → その他 で切り替え） ---------- */

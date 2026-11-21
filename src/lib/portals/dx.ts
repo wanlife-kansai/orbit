@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { SHOP_ID } from "@/lib/shop";
+import { currentShopId } from "@/lib/shop";
 import { decrypt } from "@/lib/secret";
 import { DxError, FuzokuDx, type DxNews } from "@/lib/robots/fuzokudx";
 
@@ -17,13 +17,13 @@ async function account() {
   const [a] = await db
     .select()
     .from(shopPortalAccounts)
-    .where(and(eq(shopPortalAccounts.shopId, SHOP_ID), eq(shopPortalAccounts.portalId, p.id)));
+    .where(and(eq(shopPortalAccounts.shopId, (await currentShopId())), eq(shopPortalAccounts.portalId, p.id)));
   if (!a?.loginId || !a.passwordEnc) throw new DxError("風俗DXのログインID・パスワードが未登録です（ID・PASS登録で登録してください）", "ログイン");
   return { portal: p, loginId: a.loginId, password: decrypt(a.passwordEnc) };
 }
 
 async function log(portalId: number, ok: boolean, message: string, kind = "") {
-  await db.insert(syncLogs).values({ shopId: SHOP_ID, portalId, ok, errorKind: ok ? "" : kind, message, category: message.includes("接続テスト") ? "" : "content" });
+  await db.insert(syncLogs).values({ shopId: (await currentShopId()), portalId, ok, errorKind: ok ? "" : kind, message, category: message.includes("接続テスト") ? "" : "content" });
 }
 
 /** ログインして処理し、結果を配信ログに残す */

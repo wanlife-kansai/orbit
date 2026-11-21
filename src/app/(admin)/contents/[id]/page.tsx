@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { and, asc, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { SHOP_ID } from "@/lib/shop";
+import { currentShopId } from "@/lib/shop";
 import { PageHeader } from "@/components/PageHeader";
 import { catalogItem } from "@/lib/contentCatalog";
 import { ContentEditor } from "./ContentEditor";
@@ -9,12 +9,12 @@ import { DxNewsPanel } from "../DxNewsPanel";
 
 export default async function ContentEditPage({ params }: { params: Promise<{ id: string }> }) {
   const id = Number((await params).id);
-  const [c] = await db.select().from(schema.contents).where(and(eq(schema.contents.id, id), eq(schema.contents.shopId, SHOP_ID)));
+  const [c] = await db.select().from(schema.contents).where(and(eq(schema.contents.id, id), eq(schema.contents.shopId, (await currentShopId()))));
   if (!c) notFound();
   const templates = await db
     .select({ id: schema.templates.id, title: schema.templates.title, body: schema.templates.body, label: schema.templates.label })
     .from(schema.templates)
-    .where(eq(schema.templates.shopId, SHOP_ID))
+    .where(eq(schema.templates.shopId, (await currentShopId())))
     .orderBy(asc(schema.templates.sortOrder), asc(schema.templates.id));
   const item = catalogItem(c.site, c.slot);
   return (

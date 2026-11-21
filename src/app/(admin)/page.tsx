@@ -3,7 +3,7 @@ import { revalidatePath } from "next/cache";
 import { db, schema } from "@/db";
 import { and, count, eq, gte } from "drizzle-orm";
 import { PageHeader } from "@/components/PageHeader";
-import { getShop, SHOP_ID } from "@/lib/shop";
+import { getShop, currentShopId } from "@/lib/shop";
 import { getTodayRoster } from "@/lib/queries";
 import { fmtTime, labelMd } from "@/lib/dates";
 
@@ -12,7 +12,7 @@ async function saveMemo(formData: FormData) {
   await db
     .update(schema.shops)
     .set({ memo: String(formData.get("memo") ?? "") })
-    .where(eq(schema.shops.id, SHOP_ID));
+    .where(eq(schema.shops.id, (await currentShopId())));
   revalidatePath("/");
 }
 
@@ -24,19 +24,19 @@ export default async function Dashboard() {
   const [{ n: castCount }] = await db
     .select({ n: count() })
     .from(schema.casts)
-    .where(eq(schema.casts.shopId, SHOP_ID));
+    .where(eq(schema.casts.shopId, (await currentShopId())));
   const [{ n: portalCount }] = await db
     .select({ n: count() })
     .from(schema.shopPortalAccounts)
-    .where(eq(schema.shopPortalAccounts.shopId, SHOP_ID));
+    .where(eq(schema.shopPortalAccounts.shopId, (await currentShopId())));
   const [{ n: errorCount }] = await db
     .select({ n: count() })
     .from(schema.syncLogs)
-    .where(and(eq(schema.syncLogs.shopId, SHOP_ID), eq(schema.syncLogs.ok, false), gte(schema.syncLogs.createdAt, new Date(Date.now() - 86400_000))));
+    .where(and(eq(schema.syncLogs.shopId, (await currentShopId())), eq(schema.syncLogs.ok, false), gte(schema.syncLogs.createdAt, new Date(Date.now() - 86400_000))));
   const [{ n: activeCount }] = await db
     .select({ n: count() })
     .from(schema.contents)
-    .where(and(eq(schema.contents.shopId, SHOP_ID), eq(schema.contents.active, true)));
+    .where(and(eq(schema.contents.shopId, (await currentShopId())), eq(schema.contents.active, true)));
 
   const working = roster.filter((r) => r.state === "working").length;
   const waiting = roster.filter((r) => r.status === "waiting").length;

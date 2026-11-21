@@ -1,7 +1,7 @@
 import { and, asc, eq, ne } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { PageHeader } from "@/components/PageHeader";
-import { SHOP_ID } from "@/lib/shop";
+import { currentShopId } from "@/lib/shop";
 import { getOfficialPortal, linkedCount } from "@/lib/official";
 import { OfficialPanel } from "./OfficialPanel";
 import { TargetSites } from "./TargetSites";
@@ -16,10 +16,10 @@ export default async function PortalsPage() {
     ? await db
         .select()
         .from(schema.shopPortalAccounts)
-        .where(and(eq(schema.shopPortalAccounts.shopId, SHOP_ID), eq(schema.shopPortalAccounts.portalId, official.id)))
+        .where(and(eq(schema.shopPortalAccounts.shopId, (await currentShopId())), eq(schema.shopPortalAccounts.portalId, official.id)))
     : [];
   const linked = await linkedCount();
-  const accounts = await db.select().from(schema.shopPortalAccounts).where(eq(schema.shopPortalAccounts.shopId, SHOP_ID));
+  const accounts = await db.select().from(schema.shopPortalAccounts).where(eq(schema.shopPortalAccounts.shopId, (await currentShopId())));
   const shop = await getShop();
   const slots = await db.select().from(schema.portalSlots).orderBy(asc(schema.portalSlots.id));
 

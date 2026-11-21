@@ -1,6 +1,6 @@
 import { asc, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { SHOP_ID } from "@/lib/shop";
+import { currentShopId } from "@/lib/shop";
 
 const COLS: [string, (c: typeof schema.casts.$inferSelect) => unknown][] = [
   ["ID", (c) => c.id],
@@ -48,7 +48,7 @@ const esc = (v: unknown) => {
 
 /** 女性CSV出力（Excelで開けるようにBOM付きUTF-8） */
 export async function GET() {
-  const list = await db.select().from(schema.casts).where(eq(schema.casts.shopId, SHOP_ID)).orderBy(asc(schema.casts.sortOrder), asc(schema.casts.id));
+  const list = await db.select().from(schema.casts).where(eq(schema.casts.shopId, (await currentShopId()))).orderBy(asc(schema.casts.sortOrder), asc(schema.casts.id));
   const lines = [COLS.map(([h]) => h).join(","), ...list.map((c) => COLS.map(([, f]) => esc(f(c))).join(","))];
   const date = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
   return new Response("﻿" + lines.join("\r\n"), {

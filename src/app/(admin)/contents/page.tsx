@@ -1,6 +1,6 @@
 import { asc, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { SHOP_ID } from "@/lib/shop";
+import { currentShopId } from "@/lib/shop";
 import { PageHeader } from "@/components/PageHeader";
 import { CATALOG, KINDS } from "@/lib/contentCatalog";
 import { ALL_SITES } from "@/lib/sites";
@@ -8,9 +8,9 @@ import { ContentList } from "./ContentList";
 import { AddContents } from "./AddContents";
 
 export default async function ContentsPage() {
-  const rows = await db.select().from(schema.contents).where(eq(schema.contents.shopId, SHOP_ID)).orderBy(asc(schema.contents.groupName), asc(schema.contents.name));
+  const rows = await db.select().from(schema.contents).where(eq(schema.contents.shopId, (await currentShopId()))).orderBy(asc(schema.contents.groupName), asc(schema.contents.name));
   const portals = await db.select().from(schema.portals);
-  const accounts = await db.select().from(schema.shopPortalAccounts).where(eq(schema.shopPortalAccounts.shopId, SHOP_ID));
+  const accounts = await db.select().from(schema.shopPortalAccounts).where(eq(schema.shopPortalAccounts.shopId, (await currentShopId())));
   const registered = new Set(portals.filter((p) => accounts.some((a) => a.portalId === p.id && a.loginId)).map((p) => p.code));
   const have = new Set(rows.map((r) => `${r.site}:${r.slot}`));
 

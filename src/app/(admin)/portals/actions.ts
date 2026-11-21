@@ -1,7 +1,7 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { db, schema } from "@/db";
-import { SHOP_ID } from "@/lib/shop";
+import { currentShopId } from "@/lib/shop";
 import { encrypt } from "@/lib/secret";
 import { getOfficialPortal, importFromOfficial, resetLinks, testConnection } from "@/lib/official";
 import { and, eq } from "drizzle-orm";
@@ -26,12 +26,12 @@ export async function saveOfficial(prev: Msg, fd: FormData): Promise<Msg> {
   const [before] = await db
     .select()
     .from(schema.shopPortalAccounts)
-    .where(and(eq(schema.shopPortalAccounts.shopId, SHOP_ID), eq(schema.shopPortalAccounts.portalId, portal.id)));
+    .where(and(eq(schema.shopPortalAccounts.shopId, (await currentShopId())), eq(schema.shopPortalAccounts.portalId, portal.id)));
   const urlChanged = !!before?.loginId && before.loginId !== url;
   if (urlChanged) await resetLinks(portal.id); // 別のサイトにつなぎ替えたら、女性のつながりは作り直す
   await db
     .insert(schema.shopPortalAccounts)
-    .values({ shopId: SHOP_ID, portalId: portal.id, loginId: url, passwordEnc: set.passwordEnc ?? "" })
+    .values({ shopId: (await currentShopId()), portalId: portal.id, loginId: url, passwordEnc: set.passwordEnc ?? "" })
     .onConflictDoUpdate({ target: [schema.shopPortalAccounts.shopId, schema.shopPortalAccounts.portalId], set });
   revalidatePath("/portals");
   const t = await testConnection();
@@ -45,7 +45,7 @@ async function recordCheck(portalId: number, ok: boolean, message: string) {
   await db
     .update(schema.shopPortalAccounts)
     .set({ lastCheckAt: sql`now()`, lastCheckResult: ok ? "OK" : message })
-    .where(and(eq(schema.shopPortalAccounts.shopId, SHOP_ID), eq(schema.shopPortalAccounts.portalId, portalId)));
+    .where(and(eq(schema.shopPortalAccounts.shopId, (await currentShopId())), eq(schema.shopPortalAccounts.portalId, portalId)));
 }
 
 export async function testOfficial(prev: Msg): Promise<Msg> {
@@ -68,7 +68,7 @@ export async function saveTargetSites(codes: string[]) {
   await db
     .update(schema.shops)
     .set({ targetSites: codes.filter((c) => known.has(c)) })
-    .where(eq(schema.shops.id, SHOP_ID));
+    .where(eq(schema.shops.id, (await currentShopId())));
   revalidatePath("/", "layout");
 }
 
@@ -87,7 +87,7 @@ export async function savePortalAccount(portalId: number, prev: Msg, fd: FormDat
   }
   await db
     .insert(schema.shopPortalAccounts)
-    .values({ shopId: SHOP_ID, portalId, loginId, passwordEnc: set.passwordEnc ?? "" })
+    .values({ shopId: (await currentShopId()), portalId, loginId, passwordEnc: set.passwordEnc ?? "" })
     .onConflictDoUpdate({ target: [schema.shopPortalAccounts.shopId, schema.shopPortalAccounts.portalId], set });
   revalidatePath("/portals");
   revalidatePath("/accounts");

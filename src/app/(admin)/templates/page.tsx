@@ -1,14 +1,14 @@
 import { asc, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { SHOP_ID } from "@/lib/shop";
+import { currentShopId } from "@/lib/shop";
 import { PageHeader } from "@/components/PageHeader";
 import { createTemplate } from "./actions";
 import { LABELS, TEMPLATE_MAX } from "./labels";
 import { TemplateList } from "./TemplateList";
 
 export default async function TemplatesPage() {
-  const list = await db.select().from(schema.templates).where(eq(schema.templates.shopId, SHOP_ID)).orderBy(asc(schema.templates.sortOrder), asc(schema.templates.id));
-  const contents = await db.select({ entries: schema.contents.entries, times: schema.contents.times }).from(schema.contents).where(eq(schema.contents.shopId, SHOP_ID));
+  const list = await db.select().from(schema.templates).where(eq(schema.templates.shopId, (await currentShopId()))).orderBy(asc(schema.templates.sortOrder), asc(schema.templates.id));
+  const contents = await db.select({ entries: schema.contents.entries, times: schema.contents.times }).from(schema.contents).where(eq(schema.contents.shopId, (await currentShopId())));
   const used = (id: number) => contents.filter((c) => c.entries.some((e) => e.templateId === id) || c.times.some((t) => t.entry.templateId === id)).length;
   return (
     <>
