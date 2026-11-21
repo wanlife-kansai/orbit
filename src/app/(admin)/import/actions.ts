@@ -61,11 +61,10 @@ export async function importRestStep(session: string, what: "schedules" | "templ
     const shopId = await currentShopId();
     if (what === "schedules") {
       const now = new Date(Date.now() + 9 * 3600_000);
-      const ym = (d: number) => {
-        const x = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + d, 1));
-        return `${x.getUTCFullYear()}-${String(x.getUTCMonth() + 1).padStart(2, "0")}`;
-      };
-      const r = await importSchedules(s, shopId, [ym(-1), ym(0), ym(1), ym(2)]);
+      const ymd = (y: number, m: number, d: number) => new Date(Date.UTC(y, m, d)).toISOString().slice(0, 10);
+      const y = now.getUTCFullYear(), m = now.getUTCMonth();
+      // 先月1日〜再来月末
+      const r = await importSchedules(s, shopId, ymd(y, m - 1, 1), ymd(y, m + 3, 0));
       return { ok: true, message: `基本出勤 ${r.base}人、出勤・休み ${r.days}件` };
     }
     if (what === "templates") return { ok: true, message: `テンプレート ${await importTemplates(s, shopId)}件` };

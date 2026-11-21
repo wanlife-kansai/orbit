@@ -360,7 +360,8 @@ async function syncPhotos(s: VenreySession, shopId: number, castId: number, want
 type VSched = { GirlId: number; ScheduleDate: string | null; StartTime: string | null; EndTime: string | null; ScheduleStatus: number | null; Youbi: number };
 type VSchedResp = { BasicList: VSched[]; ScheduleList: VSched[] };
 
-export async function importSchedules(s: VenreySession, shopId: number, months: string[]) {
+/** from〜to（YYYY-MM-DD）の出勤を週単位で読む（月表示のAPIは女性1人ずつなので使わない） */
+export async function importSchedules(s: VenreySession, shopId: number, from: string, to: string) {
   const rows = await db.select({ id: casts.id, ref: casts.sourceRef }).from(casts).where(and(eq(casts.shopId, shopId), like(casts.sourceRef, "venrey:%")));
   const byGirl = new Map(rows.map((r) => [Number(r.ref.slice(7)), r.id]));
 
@@ -378,11 +379,13 @@ export async function importSchedules(s: VenreySession, shopId: number, months: 
   }
   for (const [castId, bs] of base) await db.update(casts).set({ baseSchedule: bs }).where(eq(casts.id, castId));
 
-  // 日ごとの出勤（指定した月）
+  // 日ごとの出勤（from〜to を1週間ずつ）
   const seen = new Set<string>();
   let n = 0;
   const all = [...week.ScheduleList];
-  for (const ym of months) all.push(...(await vget<VSchedResp>(s, `schedules/month?Range=${ym}-01`)).ScheduleList);
+  for (let d = new Date(`${from}T00:00:00Z`); d.toISOString().slice(0, 10) <= to; d = new Date(d.getTime() + 7 * 86400_000)) {
+    all.push(...(await vget<VSchedResp>(s, `schedules/week/?Range=${d.toISOString().slice(0, 10)}`)).ScheduleList);
+  }
   for (const x of all) {
     const castId = byGirl.get(x.GirlId);
     const date = day(x.ScheduleDate);
