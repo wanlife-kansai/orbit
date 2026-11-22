@@ -12,7 +12,7 @@ import { db, schema } from "@/db";
 import { decrypt, encrypt } from "./secret";
 import { removeImage, saveImage } from "./storage";
 import { CUPS } from "./castFields";
-import { SITE_FIELDS, INBOUND_FIELDS, COMMON_FIELDS, ALL_SITES, siteName, type FieldDef } from "./sites";
+import { SITE_FIELDS, SITES, INBOUND_FIELDS, COMMON_FIELDS, ALL_SITES, siteName, type FieldDef } from "./sites";
 import { CATALOG } from "./contentCatalog";
 
 const API = "https://webapi2.mrvenrey.jp";
@@ -519,7 +519,7 @@ export async function importAccounts(s: VenreySession, shopId: number) {
   }
 
   // 連動先サイト（各サイト項目のタブに出すサイト）を、写したサイトにそろえる
-  const known = new Set(SITE_FIELDS.map((x) => x.code));
+  const known = new Set(SITES.map((x) => x.code));
   const targets = [...new Set(list.map((b) => byName.get(norm(b.BaitaiName))).filter((c): c is string => !!c && known.has(c)))];
   if (targets.length) await db.update(schema.shops).set({ targetSites: [...targets, "official"] }).where(eq(schema.shops.id, shopId));
 
