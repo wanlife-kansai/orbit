@@ -12,7 +12,7 @@ export default async function TemplatesPage() {
   const used = (id: number) => contents.filter((c) => c.entries.some((e) => e.templateId === id) || c.times.some((t) => t.entry.templateId === id)).length;
   return (
     <>
-      <PageHeader title="テンプレート" desc="各サイトに共通で使える文章です。コンテンツ更新・簡単一括更新で選んで使います。" />
+      <PageHeader title="文面テンプレート" desc="各サイトに共通で使える文章です。コンテンツ更新・簡単一括更新で選んで使います。" />
       <form action={createTemplate} className="card mb-6 grid gap-3 p-5 md:grid-cols-[1fr_140px_160px]">
         <input name="title" required placeholder="タイトル（例：本日も元気に営業中！）" className="input" />
         <select name="label" className="input">

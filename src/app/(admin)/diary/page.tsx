@@ -15,7 +15,7 @@ export default async function DiaryPage() {
   const sources = ALL_SITES.filter((x) => diarySlots.some((d) => d.site === x.code));
   return (
     <>
-      <PageHeader title="写メ日記転送" desc="取り込み元サイトの写メ日記を10分間隔で取り込み、転送先サイトへ順次転送します（更新開始後に投稿された、公開中の日記だけが対象）。" />
+      <PageHeader title="写メ日記の転送" desc="取り込み元サイトの写メ日記を10分間隔で取り込み、転送先サイトへ順次転送します（更新開始後に投稿された、公開中の日記だけが対象）。" />
       <DiaryPanel
         initial={s.diary}
         sources={sources.map((x) => ({ code: x.code, name: x.name }))}

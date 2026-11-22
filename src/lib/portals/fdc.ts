@@ -23,7 +23,7 @@ async function connect() {
     .select()
     .from(shopPortalAccounts)
     .where(and(eq(shopPortalAccounts.shopId, await currentShopId()), eq(shopPortalAccounts.portalId, p.id)));
-  if (!a?.loginId || !a.passwordEnc) throw new FdcError("風俗データセンターのログインID・パスワードが未登録です（ID・PASS登録で登録してください）", "ログイン");
+  if (!a?.loginId || !a.passwordEnc) throw new FdcError("風俗データセンターのログインID・パスワードが未登録です（サイトのログイン情報で登録してください）", "ログイン");
   const fdc = new Fdc(a.loginId, decrypt(a.passwordEnc));
   await fdc.login();
   return { fdc, portalId: p.id };

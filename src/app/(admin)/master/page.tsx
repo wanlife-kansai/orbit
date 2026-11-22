@@ -18,7 +18,7 @@ export default async function MasterPage() {
   const current = await currentShopId();
   return (
     <>
-      <PageHeader title="運営：店舗の管理" desc="店舗の追加（店舗IDは続き番号で自動発行）、パスワードの設定、店舗の切り替えができます。運営アカウントだけが見られます。" />
+      <PageHeader title="店舗の管理（運営）" desc="店舗の追加（店舗IDは続き番号で自動発行）、パスワードの設定、店舗の切り替えができます。運営アカウントだけが見られます。" />
       <MasterPanel
         current={current}
         shops={shops.map((s) => ({

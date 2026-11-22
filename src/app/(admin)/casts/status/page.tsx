@@ -31,7 +31,7 @@ export default async function CastStatusPage({ searchParams }: { searchParams: P
 
   return (
     <>
-      <PageHeader title="女性登録状況一覧" desc="ORBITの女性が、各サイトに登録されているかを一覧で確認します。">
+      <PageHeader title="サイト別の掲載状況" desc="ORBITの女性が、各サイトに登録されているかを一覧で確認します。">
         <Link href={diff ? "/casts/status" : "/casts/status?diff=1"} className="btn">{diff ? "すべて表示" : "差異がある女性のみ表示"}</Link>
         <Link href="/casts/aliases" className="btn">別名管理</Link>
         <Link href="/push/casts" className="btn-primary">変更を反映（サイトへ更新）</Link>
@@ -43,7 +43,7 @@ export default async function CastStatusPage({ searchParams }: { searchParams: P
         <span>※ポータル側の登録状況の読み込みは、各サイトの接続ができ次第「未取得」から切り替わります</span>
       </div>
       {cols.length === 0 ? (
-        <div className="card p-6 text-sm text-zinc-400">連携しているサイトがありません。<Link href="/accounts" className="text-violet-300 underline">ID・PASS登録</Link>・<Link href="/portals" className="text-violet-300 underline">公式サイト連携</Link>を設定してください。</div>
+        <div className="card p-6 text-sm text-zinc-400">連携しているサイトがありません。<Link href="/accounts" className="text-violet-300 underline">サイトのログイン情報</Link>・<Link href="/portals" className="text-violet-300 underline">公式サイト接続</Link>を設定してください。</div>
       ) : (
         <div className="card overflow-x-auto">
           <table className="text-sm">

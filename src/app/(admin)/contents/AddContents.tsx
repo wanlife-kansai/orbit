@@ -20,7 +20,7 @@ export function AddContents({ catalog }: { catalog: Site[] }) {
           <div className="mb-3 flex flex-wrap items-center gap-3 text-sm">
             <label className="flex items-center gap-2">
               <input type="checkbox" checked={onlyReg} onChange={(e) => setOnlyReg(e.target.checked)} />
-              ID・PASS登録済みのサイトだけ表示
+              ログイン情報を登録済みのサイトだけ表示
             </label>
             <span className="text-zinc-500">選択中 {sel.length} 件</span>
             <button

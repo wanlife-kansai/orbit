@@ -8,7 +8,7 @@ const HINT: Record<string, string> = {
   接続: "相手のサイトが動いているか、URLが正しいか確認してください。時間をおいてもう一度試してください",
   認証: "APIキーが公式サイトの OFFICIAL_API_KEY と同じか確認してください",
   未対応: "このサイトへの自動更新は接続準備中です",
-  ログイン: "ID・PASS登録で、そのサイトのログインID・パスワードを入れ直してください",
+  ログイン: "サイトのログイン情報で、そのサイトのログインID・パスワードを入れ直してください",
   内容: "入力内容（年齢・時刻・タイトルなど）を確認してください",
   制限: "サイト側の回数・間隔の制限です（風俗DXの速報は登録後30分あける）。時間をおいてから送ってください",
   画面変更: "相手のサイトの画面が変わった可能性があります。開発側で確認が必要です",
@@ -17,11 +17,11 @@ const HINT: Record<string, string> = {
 
 const CATS = [
   { key: "", label: "すべて" },
-  { key: "content", label: "コンテンツ更新結果" },
-  { key: "schedule", label: "出勤更新結果" },
-  { key: "girl", label: "女性更新結果" },
-  { key: "delete", label: "削除更新結果" },
-  { key: "sort", label: "並び替え更新結果" },
+  { key: "content", label: "サイト更新" },
+  { key: "schedule", label: "出勤" },
+  { key: "girl", label: "プロフィール" },
+  { key: "delete", label: "サイトから外す" },
+  { key: "sort", label: "表示順" },
 ];
 
 export default async function LogsPage({ searchParams }: { searchParams: Promise<{ c?: string; e?: string }> }) {
@@ -31,7 +31,7 @@ export default async function LogsPage({ searchParams }: { searchParams: Promise
   const logs = e ? all.filter((l) => !l.ok) : all;
   return (
     <>
-      <PageHeader title="更新結果" desc="公式サイト・ポータルへの更新結果です（新しい順・最新300件）。">
+      <PageHeader title="配信の記録" desc="公式サイト・ポータルへの更新結果です（新しい順・最新300件）。">
         <a href={`/logs?c=${cat}${e ? "" : "&e=1"}`} className="btn">{e ? "すべて表示" : "失敗だけ表示"}</a>
       </PageHeader>
       <div className="mb-3 flex flex-wrap gap-1">
@@ -52,7 +52,7 @@ export default async function LogsPage({ searchParams }: { searchParams: Promise
           <tbody>
             {logs.length === 0 && (
               <tr>
-                <td className="td text-zinc-500" colSpan={4}>まだ更新結果はありません</td>
+                <td className="td text-zinc-500" colSpan={4}>まだ配信の記録はありません</td>
               </tr>
             )}
             {logs.map((l) => (

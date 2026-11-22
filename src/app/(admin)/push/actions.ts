@@ -20,7 +20,7 @@ export async function pushSchedules(castIds: number[], sites: string[]): Promise
   if (!castIds.length || !sites.length) return { ok: false, message: "女性とサイトを選んでください" };
   let head = "";
   if (sites.includes("official")) {
-    if (!(await getConn())) return { ok: false, message: "公式サイトが未接続です（公式サイト連携で設定してください）" };
+    if (!(await getConn())) return { ok: false, message: "公式サイトが未接続です（公式サイト接続で設定してください）" };
     const shop = await getShop();
     const s = await getSettings();
     const from = businessDate(shop.dayChangeHour);
@@ -43,7 +43,7 @@ export async function pushCasts(castIds: number[], sites: string[]): Promise<R> 
   if (!castIds.length || !sites.length) return { ok: false, message: "女性とサイトを選んでください" };
   let head = "";
   if (sites.includes("official")) {
-    if (!(await getConn())) return { ok: false, message: "公式サイトが未接続です（公式サイト連携で設定してください）" };
+    if (!(await getConn())) return { ok: false, message: "公式サイトが未接続です（公式サイト接続で設定してください）" };
     for (const id of castIds) await deliverCast(id);
     head = `公式サイトへ ${castIds.length}人を送りました。`;
   }

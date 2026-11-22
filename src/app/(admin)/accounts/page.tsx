@@ -45,7 +45,7 @@ export default async function AccountsPage({ searchParams }: { searchParams: Pro
 
   return (
     <>
-      <PageHeader title="ID・PASS登録" desc="各サイトの管理画面のログインID・パスワードを登録します（暗号化して保存）。登録したサイトがコンテンツ更新・女性／出勤の更新先になります。" />
+      <PageHeader title="サイトのログイン情報" desc="各サイトの管理画面のログインID・パスワードを登録します（暗号化して保存）。登録したサイトがコンテンツ更新・女性／出勤の更新先になります。" />
       <div className="mb-3 flex flex-wrap items-center gap-2">
         {tab("all", `対応サイト一覧（${ALL_SITES.length - 1}）`)}
         {tab("reg", `登録済（${regCount}）`)}

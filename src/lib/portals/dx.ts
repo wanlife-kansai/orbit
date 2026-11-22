@@ -18,7 +18,7 @@ async function account() {
     .select()
     .from(shopPortalAccounts)
     .where(and(eq(shopPortalAccounts.shopId, (await currentShopId())), eq(shopPortalAccounts.portalId, p.id)));
-  if (!a?.loginId || !a.passwordEnc) throw new DxError("風俗DXのログインID・パスワードが未登録です（ID・PASS登録で登録してください）", "ログイン");
+  if (!a?.loginId || !a.passwordEnc) throw new DxError("風俗DXのログインID・パスワードが未登録です（サイトのログイン情報で登録してください）", "ログイン");
   return { portal: p, loginId: a.loginId, password: decrypt(a.passwordEnc) };
 }
 

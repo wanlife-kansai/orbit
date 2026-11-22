@@ -19,7 +19,7 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
       onClick={toggle}
       title={light ? "ダークモードにする" : "ライトモードにする"}
       aria-label={light ? "ダークモードにする" : "ライトモードにする"}
-      className={`inline-flex h-9 w-9 items-center justify-center rounded-md bg-zinc-800 ring-1 ring-zinc-700 hover:bg-zinc-700 ${className}`}
+      className={`inline-flex h-9 w-9 items-center justify-center rounded-full border border-zinc-700 text-zinc-300 hover:border-violet-400 hover:text-violet-200 ${className}`}
     >
       {light ? (
         <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor" aria-hidden>

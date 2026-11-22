@@ -44,7 +44,7 @@ export function PushPicker({ casts, sites, action, button, castQ, siteQ, showMis
           <h2 className="font-semibold">{siteQ}</h2>
           <span className="text-xs text-zinc-400">選択中 {ss.length} / {sites.length}件</span>
         </div>
-        {sites.length === 0 && <p className="text-sm text-zinc-500">連携しているサイトがありません（ID・PASS登録・公式サイト連携から設定）。</p>}
+        {sites.length === 0 && <p className="text-sm text-zinc-500">連携しているサイトがありません（サイトのログイン情報・公式サイト連携から設定）。</p>}
         <table className="w-full">
           <tbody>
             {sites.map((s) => (

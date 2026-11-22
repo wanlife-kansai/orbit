@@ -22,7 +22,7 @@ export default async function SokuhimePage() {
   return (
     <>
       <PageHeader
-        title="即姫・接客一括更新"
+        title="今すぐ案内"
         desc={`${labelMd(date)}　出勤 ${roster.length}人・待機中 ${waiting}人・接客中 ${serving}人　接客中は終了予定を過ぎると自動で解除されます。`}
       />
       <AutoPanel

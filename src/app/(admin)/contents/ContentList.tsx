@@ -93,7 +93,7 @@ export function ContentList({ items, kinds }: { items: Item[]; kinds: string[] }
                       <Link href={`/contents/${i.id}`} className="hover:text-violet-300">{i.name}</Link>
                       <div className="mt-0.5 flex flex-wrap gap-1">
                         {i.auto ? <span className="badge text-emerald-300 ring-emerald-800">自動投稿</span> : <span className="badge text-zinc-500 ring-zinc-700">接続準備中</span>}
-                        {!i.registered && <span className="badge text-amber-300 ring-amber-800">ID・PASS未登録</span>}
+                        {!i.registered && <span className="badge text-amber-300 ring-amber-800">ログイン情報なし</span>}
                       </div>
                       {i.lastResult && <div className={`mt-0.5 text-xs ${i.lastResult.startsWith("成功") ? "text-zinc-500" : "text-rose-400"}`}>{i.lastResult}</div>}
                       {i.memo && <div className="mt-0.5 text-xs text-zinc-500">メモ：{i.memo}</div>}

@@ -31,7 +31,7 @@ export default async function SortPage() {
   };
   return (
     <>
-      <PageHeader title="並び替え" desc="ドラッグ（または ← →）で順番を変えて保存します。固定枠の女性は常に先頭に並びます。保存すると公式サイトの並び順にも反映します。" />
+      <PageHeader title="表示順" desc="ドラッグ（または ← →）で順番を変えて保存します。固定枠の女性は常に先頭に並びます。保存すると公式サイトの並び順にも反映します。" />
       <SortList
         dayChangeHour={shop.dayChangeHour}
         items={list.map((c) => {

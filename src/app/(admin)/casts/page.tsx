@@ -52,7 +52,7 @@ export default async function CastsPage() {
 
   return (
     <>
-      <PageHeader title="女性一覧" desc={`${rows.length}人登録中（上限400人）。写真の数字は「サムネイル・画像」の枚数です。`} />
+      <PageHeader title="在籍一覧" desc={`${rows.length}人登録中（上限400人）。写真の数字は「サムネイル・画像」の枚数です。`} />
       <CastList rows={rows} officialConnected={!!conn} />
     </>
   );

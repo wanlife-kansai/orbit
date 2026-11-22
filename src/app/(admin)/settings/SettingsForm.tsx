@@ -74,7 +74,7 @@ export function SettingsForm({ tab: tab0, basics, initial, sites, build }: { tab
               <div className="label">ご連絡用メールアドレス（必須）</div>
               <input value={b.email} onChange={(e) => setB({ ...b, email: e.target.value })} className="input w-full" />
             </div>
-            {chk("notifyMail", "お知らせメールを受信する", "メンテナンス等のお知らせはチェック状態にかかわらず送ります")}
+            {chk("notifyMail", "運営からのお知らせメールを受け取る", "メンテナンス等のお知らせはチェック状態にかかわらず送ります")}
           </>
         )}
         {tab === "schedule" && (

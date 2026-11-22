@@ -25,7 +25,7 @@ export default async function MonthSchedulePage({ searchParams }: { searchParams
   const rows = cast ? await db.select().from(schema.schedules).where(and(eq(schema.schedules.castId, castId), gte(schema.schedules.date, `${month}-01`), lte(schema.schedules.date, last))) : [];
   return (
     <>
-      <PageHeader title="月間スケジュール" desc={`${y}年${m}月`}>
+      <PageHeader title="月の出勤表" desc={`${y}年${m}月`}>
         <Link className="btn" href={`/schedule/month?m=${shiftMonth(month, -1)}&c=${castId}`}>← 前月</Link>
         <Link className="btn" href={`/schedule/month?c=${castId}`}>今月</Link>
         <Link className="btn" href={`/schedule/month?m=${shiftMonth(month, 1)}&c=${castId}`}>翌月 →</Link>

@@ -1,83 +1,41 @@
 "use client";
 import { useActionState, useState } from "react";
-import { LogoMark } from "@/components/Logo";
 import { forgetShop, login } from "./actions";
 
+/** ログイン：店舗ID とパスワード。前回の店舗IDは覚えておき、最初から入れておく */
 export function LoginCard({ shopName, rememberedId }: { shopName: string | null; rememberedId: string | null }) {
-  const [state, action, pending] = useActionState(login, { error: "", id: "", n: 0 });
-  const error = state.error;
-  const remembered = !!(shopName && rememberedId);
-  const [askPw, setAskPw] = useState(false);
+  const [state, action, pending] = useActionState(login, { error: "", id: rememberedId ?? "", n: 0 });
   const [showPw, setShowPw] = useState(false);
+  const remembered = !!(shopName && rememberedId);
 
   return (
-    <div className="w-full max-w-[420px] overflow-hidden rounded-xl bg-zinc-900/90 ring-1 ring-zinc-700/70 shadow-2xl shadow-black/40">
-      <div className="relative flex flex-col items-center gap-3 bg-gradient-to-br from-zinc-800 to-zinc-900 px-6 pb-6 pt-8">
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(115deg,transparent_40%,rgba(255,255,255,0.04)_40%,rgba(255,255,255,0.04)_62%,transparent_62%)]" />
-        <LogoMark size={64} />
-        <div className="text-sm font-medium text-zinc-200">ログイン</div>
-      </div>
-
-      <form action={action} className="px-8 pb-10 pt-8">
-        {remembered ? (
-          <>
-            <p className="mt-6 text-center text-xl font-semibold tracking-wide text-zinc-100">{shopName} 様</p>
-            <input type="hidden" name="id" value={rememberedId!} />
-            <div className={`mt-10 transition-all ${askPw ? "max-h-40 opacity-100" : "max-h-0 opacity-0 overflow-hidden"}`}>
-              <PasswordField show={showPw} onToggle={() => setShowPw(!showPw)} autoFocus={askPw} />
-            </div>
-            <div className={askPw ? "mt-6" : "mt-24"}>
-              {askPw ? (
-                <SubmitButton pending={pending} />
-              ) : (
-                <button type="button" onClick={() => setAskPw(true)} className="mx-auto block w-56 rounded-full bg-violet-600 py-3 text-sm font-medium text-white hover:bg-violet-500">
-                  ログイン
-                </button>
-              )}
-            </div>
-          </>
-        ) : (
-          <div className="space-y-4">
-            <div>
-              <label className="label">ID</label>
-              <input key={state.n} name="id" defaultValue={state.id} autoComplete="username" className="input w-full" autoFocus={!state.id} />
-            </div>
-            <PasswordField key={state.n} show={showPw} onToggle={() => setShowPw(!showPw)} autoFocus={!!state.id} />
-            <div className="pt-4">
-              <SubmitButton pending={pending} />
-            </div>
+    <div className="rounded-[10px] border border-zinc-700/70 bg-zinc-900 p-7">
+      <h1 className="text-lg font-bold">ログイン</h1>
+      {remembered && <p className="mt-1 text-sm text-zinc-400">前回：{shopName}</p>}
+      <form action={action} className="mt-6 space-y-5">
+        <div>
+          <label className="label" htmlFor="login-id">店舗ID</label>
+          <input id="login-id" key={state.n} name="id" defaultValue={state.id} inputMode="numeric" autoComplete="username" className="input w-full tnum" autoFocus={!state.id} />
+        </div>
+        <div>
+          <label className="label" htmlFor="login-pw">パスワード</label>
+          <div className="relative">
+            <input id="login-pw" name="password" type={showPw ? "text" : "password"} autoComplete="current-password" className="input w-full pr-16" autoFocus={!!state.id} />
+            <button type="button" onClick={() => setShowPw(!showPw)} className="absolute inset-y-0 right-3 text-xs font-bold text-zinc-400 hover:text-zinc-100">
+              {showPw ? "隠す" : "表示"}
+            </button>
           </div>
-        )}
-        {error && <p className="mt-4 text-center text-sm text-rose-400">{error}</p>}
+        </div>
+        {state.error && <p className="text-sm font-bold text-rose-300" role="alert">{state.error}</p>}
+        <button disabled={pending} className="btn-primary w-full py-3 text-[15px]">
+          {pending ? "確認しています…" : "ログイン"}
+        </button>
       </form>
-
       {remembered && (
-        <form action={forgetShop} className="-mt-6 pb-10 text-center">
-          <button className="text-xs text-zinc-300 underline underline-offset-4 hover:text-white">別アカウントでログイン</button>
+        <form action={forgetShop} className="mt-4">
+          <button className="text-xs font-bold text-zinc-400 underline underline-offset-4 hover:text-zinc-100">別の店舗IDで入る</button>
         </form>
       )}
     </div>
-  );
-}
-
-function PasswordField({ show, onToggle, autoFocus }: { show: boolean; onToggle: () => void; autoFocus?: boolean }) {
-  return (
-    <div>
-      <label className="label">パスワード</label>
-      <div className="relative">
-        <input name="password" type={show ? "text" : "password"} autoComplete="current-password" className="input w-full pr-14" autoFocus={autoFocus} />
-        <button type="button" onClick={onToggle} className="absolute inset-y-0 right-2 text-xs text-zinc-400 hover:text-zinc-200">
-          {show ? "隠す" : "表示"}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function SubmitButton({ pending }: { pending: boolean }) {
-  return (
-    <button disabled={pending} className="mx-auto block w-56 rounded-full bg-violet-600 py-3 text-sm font-medium text-white hover:bg-violet-500 disabled:opacity-60">
-      {pending ? "確認中…" : "ログイン"}
-    </button>
   );
 }

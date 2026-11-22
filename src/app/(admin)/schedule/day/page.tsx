@@ -18,7 +18,7 @@ export default async function DaySchedulePage({ searchParams }: { searchParams: 
   const sorted = [...casts.filter((c) => on.has(c.id)), ...casts.filter((c) => !on.has(c.id))];
   return (
     <>
-      <PageHeader title="当日スケジュール" desc={`${labelMd(date)}　出勤 ${on.size}名`}>
+      <PageHeader title="今日の出勤" desc={`${labelMd(date)}　出勤 ${on.size}名`}>
         <Link className="btn" href={`/schedule/day?d=${addDays(date, -1)}`}>← 前日</Link>
         <Link className="btn" href="/schedule/day">今日</Link>
         <Link className="btn" href={`/schedule/day?d=${addDays(date, 1)}`}>翌日 →</Link>

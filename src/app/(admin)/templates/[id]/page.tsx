@@ -15,7 +15,7 @@ export default async function EditTemplatePage({ params }: { params: Promise<{ i
   if (!t) notFound();
   return (
     <>
-      <PageHeader title="テンプレートを編集">
+      <PageHeader title="文面テンプレートを編集">
         <form action={deleteTemplate.bind(null, id)}>
           <button className="btn-danger">削除</button>
         </form>

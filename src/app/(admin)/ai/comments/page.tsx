@@ -15,7 +15,7 @@ export default async function AiCommentsPage() {
   const u = await usage();
   return (
     <>
-      <PageHeader title="コメント生成" desc="女性の特徴とキーワード・口調から、お店コメントの文案をAIが作ります。" />
+      <PageHeader title="紹介文をAIで作る" desc="女性の特徴とキーワード・口調から、お店コメントの文案をAIが作ります。" />
       <CommentGen
         casts={casts}
         usage={u}

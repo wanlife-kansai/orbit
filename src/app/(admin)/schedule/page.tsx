@@ -31,7 +31,7 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
 
   return (
     <>
-      <PageHeader title="週間スケジュール" desc={`${labelMd(monday)} 〜 ${labelMd(sunday)}　時刻は${shop.dayChangeHour}:00 切り替え（それより前は「翌」）`}>
+      <PageHeader title="週の出勤表" desc={`${labelMd(monday)} 〜 ${labelMd(sunday)}　時刻は${shop.dayChangeHour}:00 切り替え（それより前は「翌」）`}>
         <Link className="btn" href={`/schedule?w=${addDays(monday, -7)}`}>← 前の週</Link>
         <Link className="btn" href="/schedule">今週</Link>
         <Link className="btn" href={`/schedule?w=${addDays(monday, 7)}`}>次の週 →</Link>

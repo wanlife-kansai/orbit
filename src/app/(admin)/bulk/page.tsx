@@ -11,7 +11,7 @@ export default async function BulkPage() {
   const history = await db.select().from(schema.bulkPosts).where(eq(schema.bulkPosts.shopId, (await currentShopId()))).orderBy(desc(schema.bulkPosts.id));
   return (
     <>
-      <PageHeader title="簡単一括更新" desc="1日限りの限定イベントなどを、選んだサイトへまとめて1回で更新します。履歴は100件を超えると古いものから消えます。" />
+      <PageHeader title="まとめて投稿" desc="1日限りの限定イベントなどを、選んだサイトへまとめて1回で更新します。履歴は100件を超えると古いものから消えます。" />
       <BulkForm
         contents={contents.map((c) => ({ id: c.id, name: c.name, kind: c.kind, auto: !!CATALOG.find((x) => x.site === c.site && x.slot === c.slot)?.driver }))}
         templates={templates}

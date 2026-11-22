@@ -10,7 +10,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   const { tab } = await searchParams;
   return (
     <>
-      <PageHeader title="設定" />
+      <PageHeader title="店舗の設定" />
       <SettingsForm
         tab={tab ?? "basic"}
         basics={{ name: shop.name, officialUrl: shop.officialUrl, email: shop.email, dayChangeHour: shop.dayChangeHour }}

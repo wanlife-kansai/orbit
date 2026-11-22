@@ -25,12 +25,12 @@ export default async function PortalsPage() {
 
   return (
     <>
-      <PageHeader title="公式サイト連携" desc="公式サイトにはAPIで配信します。女性編集に出す連動先サイトもここで選びます。" />
+      <PageHeader title="公式サイト接続" desc="公式サイトにはAPIで配信します。女性編集に出す連動先サイトもここで選びます。" />
       <div className="space-y-4">
         <OfficialPanel url={acc?.loginId ?? ""} hasKey={!!acc?.passwordEnc} linked={linked} lastCheck={acc?.lastCheckResult ?? ""} />
         <TargetSites initial={targetSitesOf(shop)} />
         <p className="text-sm text-zinc-400">
-          ポータルサイトのログインID・パスワードは <a href="/accounts" className="text-violet-300 underline">ID・PASS登録</a> で設定します。
+          ポータルサイトのログインID・パスワードは <a href="/accounts" className="text-violet-300 underline">サイトのログイン情報</a> で設定します。
         </p>
       </div>
     </>
