@@ -525,3 +525,110 @@ export async function importAccounts(s: VenreySession, shopId: number) {
 
   return { total: list.length, saved, skipped, unmatched, targets: targets.length };
 }
+
+/* ───────── コンテンツ更新の中身（更新方法・時間・文面） ───────── */
+
+type VStyleSetting = { PostStyle: number; TimerInterval: number | null; IsLoopPost: boolean; IsSetSun: boolean; IsSetMon: boolean; IsSetTue: boolean; IsSetWed: boolean; IsSetThu: boolean; IsSetFri: boolean; IsSetSat: boolean };
+type VStyleDetail = { PostStyle: number; WeekTabId: number | null; Day: number | null; Hour: number | null; Min: number | null; TemplateId: number | null; CmnTemplateId: number | null; SortNo: number | null };
+type VPostTemplate = { TemplateId: number; TemplateName: string | null; Title1: string | null; Comment1: string | null; ImagePathMain?: string | null };
+type VContentDetail = {
+  ContentsSettings: { IsStarted: boolean; StartedPostStyle: number | null; SelectedPostStyle: number | null; IsPostInOpenHours: boolean; PostTimeZone: string | null; ContentsMemo: string | null } | null;
+  PostStyleList: { PostStyle: number; StyleName: string }[];
+  PostStyleSettingsList: VStyleSetting[];
+  PostStyleSettingsDetailList: VStyleDetail[];
+  SimplePostTemplateList: VPostTemplate[];
+  NextUpdateDate: string | null;
+};
+
+/** 取り込み済みのコンテンツ枠（Venrey の BaseSeq）一覧 */
+export async function importedContentSeqs(shopId: number) {
+  const rows = await db.select({ ref: contents.sourceRef }).from(contents).where(and(eq(contents.shopId, shopId), like(contents.sourceRef, "venrey:%")));
+  return rows.map((r) => r.ref.slice(7));
+}
+
+/** "111111000…"（24時間）→ 投稿してよい時間帯（連続した範囲。全部OKなら空） */
+function hoursOf(zone: string | null) {
+  if (!zone || zone.length !== 24 || !zone.includes("0")) return { hoursFrom: "", hoursTo: "" };
+  const on = [...zone].map((c) => c === "1");
+  // 営業日は 6:00 始まりとして、6時から並べた中で最初と最後の「OK」の時間
+  const order = Array.from({ length: 24 }, (_, i) => (i + 6) % 24);
+  const ok = order.filter((h) => on[h]);
+  if (!ok.length) return { hoursFrom: "", hoursTo: "" };
+  const hh = (h: number) => `${String(h).padStart(2, "0")}:00`;
+  return { hoursFrom: hh(ok[0]), hoursTo: hh((ok[ok.length - 1] + 1) % 24) };
+}
+
+/**
+ * コンテンツ枠の中身を Venrey から写す（更新は停止のまま）。
+ * Venrey の更新方法 → ORBIT：直接入力→direct、間隔指定→timer、時間指定・詳細設定→times。
+ * 文面は枠専用テンプレート（本文）と共通テンプレート（ORBIT に取り込み済みのもの）から作る。画像は写さない。
+ */
+export async function importContentDetail(s: VenreySession, shopId: number, baseSeq: string) {
+  const [row] = await db.select().from(contents).where(and(eq(contents.shopId, shopId), eq(contents.sourceRef, `venrey:${baseSeq}`)));
+  if (!row) return { name: baseSeq, ok: false, message: "ORBITに枠がありません" };
+  const d = await vget<VContentDetail>(s, `contentsupdate?baseseq=${baseSeq}`);
+  const st = d.ContentsSettings;
+  const style = (st?.IsStarted ? st.StartedPostStyle : st?.SelectedPostStyle) ?? 0;
+  const styleName = d.PostStyleList.find((p) => p.PostStyle === style)?.StyleName ?? String(style);
+  const setting = d.PostStyleSettingsList.find((p) => p.PostStyle === style);
+  const details = d.PostStyleSettingsDetailList.filter((x) => x.PostStyle === style).sort((a, b) => (a.SortNo ?? 0) - (b.SortNo ?? 0));
+
+  // 文面：枠専用テンプレートは1件ずつ読む。共通テンプレートは ORBIT の文面テンプレートを使う
+  const tplCache = new Map<number, VPostTemplate | null>();
+  const postTemplate = async (id: number) => {
+    if (!tplCache.has(id)) tplCache.set(id, await vget<VPostTemplate>(s, `templates?baseSeq=${baseSeq}&templateId=${id}`).catch(() => null));
+    return tplCache.get(id) ?? null;
+  };
+  let images = 0;
+  const entryOf = async (x: VStyleDetail): Promise<{ title: string; body: string; templateId?: number } | null> => {
+    if (x.CmnTemplateId) {
+      const [t] = await db.select().from(templates).where(and(eq(templates.shopId, shopId), eq(templates.sourceRef, `venrey:${x.CmnTemplateId}`)));
+      return t ? { title: t.title, body: t.body, templateId: t.id } : { title: `（共通テンプレート ${x.CmnTemplateId}）`, body: "" };
+    }
+    if (x.TemplateId) {
+      const t = await postTemplate(x.TemplateId);
+      if (!t) return null;
+      if (t.ImagePathMain) images++;
+      return { title: str(t.Title1) || str(t.TemplateName), body: str(t.Comment1) };
+    }
+    return null;
+  };
+
+  const v: Partial<typeof contents.$inferInsert> = { active: false, ...hoursOf(st?.IsPostInOpenHours === false ? null : st?.PostTimeZone ?? null) };
+  if (setting) {
+    const flags = [setting.IsSetSun, setting.IsSetMon, setting.IsSetTue, setting.IsSetWed, setting.IsSetThu, setting.IsSetFri, setting.IsSetSat];
+    v.weekdays = flags.some(Boolean) ? flags.map((f, i) => (f ? i : -1)).filter((i) => i >= 0) : [];
+    if (setting.TimerInterval) v.intervalMin = Math.max(1, Math.round(setting.TimerInterval / 60));
+    v.loop = setting.IsLoopPost;
+  }
+  if (style === 0) {
+    v.mode = "direct";
+    v.entries = d.SimplePostTemplateList.filter((t) => str(t.Title1) || str(t.Comment1)).map((t) => {
+      if (t.ImagePathMain) images++;
+      return { title: str(t.Title1), body: str(t.Comment1) };
+    });
+  } else if (style === 1) {
+    v.mode = "timer";
+    v.entries = (await Promise.all(details.map(entryOf))).filter((e): e is NonNullable<typeof e> => !!e);
+  } else {
+    // 時間指定・詳細設定：時刻ごとの投稿（詳細設定は最初の週のパターンだけ）
+    v.mode = "times";
+    const firstWeek = details.filter((x) => (x.WeekTabId ?? 0) === (details[0]?.WeekTabId ?? 0));
+    const times = [];
+    for (const x of firstWeek) {
+      const e = await entryOf(x);
+      if (e && x.Hour !== null) times.push({ at: `${String(x.Hour).padStart(2, "0")}:${String(x.Min ?? 0).padStart(2, "0")}`, entry: e });
+    }
+    v.times = times;
+  }
+  const note = [
+    `Venreyの更新方法：${styleName}${st?.IsStarted ? `（Venreyでは稼働中${d.NextUpdateDate ? `・次回 ${d.NextUpdateDate.replace("T", " ").slice(0, 16)}` : ""}）` : "（Venreyでは停止中）"}`,
+    style === 5 ? "詳細設定（曜日・日付ごと）は最初のパターンだけを時刻指定として写しています" : "",
+    images ? `画像 ${images}枚は写していません（Venrey側にあります）` : "",
+  ].filter(Boolean);
+  const memo = [str(st?.ContentsMemo), ...note].filter(Boolean).join("\n");
+  v.memo = memo;
+  await db.update(contents).set(v).where(eq(contents.id, row.id));
+  const count = v.mode === "times" ? (v.times?.length ?? 0) : (v.entries?.length ?? 0);
+  return { name: row.name, ok: true, message: `${styleName}・${count}件${st?.IsStarted ? "（Venrey稼働中）" : ""}`, started: !!st?.IsStarted };
+}

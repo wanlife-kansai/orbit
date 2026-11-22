@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { currentShopId, getShop } from "@/lib/shop";
 import { decrypt, encrypt } from "@/lib/secret";
-import { importAccounts, importContents, importGirl, importSchedules, importTemplates, listGirls, packSession, unpackSession, venreyLogin } from "@/lib/venrey";
+import { importAccounts, importContentDetail, importContents, importedContentSeqs, importGirl, importSchedules, importTemplates, listGirls, packSession, unpackSession, venreyLogin } from "@/lib/venrey";
 
 type R<T> = ({ ok: true } & T) | { ok: false; message: string };
 const fail = (e: unknown) => ({ ok: false as const, message: e instanceof Error ? e.message : String(e) });
@@ -91,4 +91,32 @@ export async function finishImport(summary: string) {
     .set({ importSource: { ...shop.importSource, venrey: { loginId: v?.loginId ?? "", passwordEnc: v?.passwordEnc ?? "", lastImportAt: new Date().toISOString(), lastSummary: summary.slice(0, 2000) } } })
     .where(eq(schema.shops.id, shop.id));
   revalidatePath("/", "layout");
+}
+
+/** コンテンツ枠の中身：取り込み済みの枠の一覧 */
+export async function contentSeqsStep(): Promise<R<{ seqs: string[] }>> {
+  try {
+    return { ok: true, seqs: await importedContentSeqs(await currentShopId()) };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+/** コンテンツ枠の中身を数件ずつ */
+export async function contentDetailStep(session: string, seqs: string[]): Promise<R<{ results: { name: string; ok: boolean; message: string; started?: boolean }[] }>> {
+  try {
+    const s = unpackSession(session);
+    const shopId = await currentShopId();
+    const results = [];
+    for (const seq of seqs.slice(0, 6)) {
+      try {
+        results.push(await importContentDetail(s, shopId, seq));
+      } catch (e) {
+        results.push({ name: seq, ok: false, message: e instanceof Error ? e.message : String(e) });
+      }
+    }
+    return { ok: true, results };
+  } catch (e) {
+    return fail(e);
+  }
 }

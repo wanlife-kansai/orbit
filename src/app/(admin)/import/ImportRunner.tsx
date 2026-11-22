@@ -1,6 +1,6 @@
 "use client";
 import { useRef, useState } from "react";
-import { connectVenrey, finishImport, importGirlsStep, importRestStep } from "./actions";
+import { connectVenrey, contentDetailStep, contentSeqsStep, finishImport, importGirlsStep, importRestStep } from "./actions";
 
 type Line = { text: string; tone?: "ok" | "err" | "dim" };
 
@@ -8,7 +8,7 @@ export function ImportRunner({ savedId, hasSaved, lastImportAt, lastSummary }: {
   const [id, setId] = useState(savedId);
   const [pw, setPw] = useState("");
   const [remember, setRemember] = useState(true);
-  const [opts, setOpts] = useState({ girls: true, schedules: true, templates: true, contents: true, accounts: true });
+  const [opts, setOpts] = useState({ girls: true, schedules: true, templates: true, contents: true, accounts: true, contentDetail: true });
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [log, setLog] = useState<Line[]>([]);
@@ -88,6 +88,26 @@ export function ImportRunner({ savedId, hasSaved, lastImportAt, lastSummary }: {
         add({ text: r.message, tone: "ok" });
         if (r.detail?.length) add({ text: `${key === "accounts" ? "登録しなかったもの" : "ORBITに枠がないため未登録"}：${r.detail.join("、")}`, tone: "dim" });
       }
+      if (opts.contentDetail && !stop.current) {
+        add({ text: "コンテンツ更新の中身（更新方法・時間・文面）を取り込んでいます…", tone: "dim" });
+        const q = await contentSeqsStep();
+        if (!q.ok) add({ text: q.message, tone: "err" });
+        else {
+          let ok = 0, started = 0, ng = 0;
+          setProgress({ done: 0, total: q.seqs.length });
+          for (let i = 0; i < q.seqs.length && !stop.current; i += 6) {
+            const r = await contentDetailStep(c.session, q.seqs.slice(i, i + 6)).catch(() => null);
+            if (!r || !r.ok) { add({ text: r && !r.ok ? r.message : "通信エラー（もう一度実行すると続きから入ります）", tone: "err" }); ng += 6; continue; }
+            for (const x of r.results) {
+              if (x.ok) { ok++; if (x.started) started++; } else { ng++; add({ text: `× ${x.name}：${x.message}`, tone: "err" }); }
+            }
+            setProgress({ done: Math.min(i + 6, q.seqs.length), total: q.seqs.length });
+          }
+          const line = `コンテンツ更新の中身：${ok}枠（うちVenreyで稼働中 ${started}枠）を停止中で設定${ng ? `、エラー ${ng}件` : ""}`;
+          summary.push(line);
+          add({ text: line, tone: ng ? "err" : "ok" });
+        }
+      }
       await finishImport(summary.join("\n"));
       add({ text: stop.current ? "途中で止めました" : "取り込みが終わりました", tone: "ok" });
     } catch (e) {
@@ -122,6 +142,7 @@ export function ImportRunner({ savedId, hasSaved, lastImportAt, lastSummary }: {
               ["templates", "テンプレート"],
               ["contents", "コンテンツ更新の枠（停止中で登録）"],
               ["accounts", "連動しているサイトのログインID・パスワード（暗号化して保存）と連動先サイト"],
+              ["contentDetail", "コンテンツ更新の中身（更新方法・間隔／時刻・曜日・時間帯・文面）※更新は停止のまま"],
             ] as const
           ).map(([k, l]) => (
             <label key={k} className="flex items-start gap-2">
@@ -156,7 +177,7 @@ export function ImportRunner({ savedId, hasSaved, lastImportAt, lastSummary }: {
         {progress.total > 0 && (
           <div className="mb-4">
             <div className="mb-1 text-xs text-zinc-400">
-              女性 {progress.done} / {progress.total}人
+              進み具合 {progress.done} / {progress.total}
             </div>
             <div className="h-2 overflow-hidden rounded bg-zinc-800">
               <div className="h-full bg-violet-500 transition-all" style={{ width: `${(progress.done / progress.total) * 100}%` }} />
