@@ -29,7 +29,8 @@ export function BulkSync() {
     loadBatches();
   }, []);
 
-  const diff = useMemo(() => (rows ?? []).filter((r) => !r.same), [rows]);
+  const diff = useMemo(() => (rows ?? []).filter((r) => !r.same && !r.special), [rows]);
+
   const shown = useMemo(() => (rows ?? []).filter((r) => !onlyDiff || !r.same), [rows, onlyDiff]);
 
   async function compare() {
@@ -40,7 +41,8 @@ export function BulkSync() {
     setRows(r.rows);
     const casts = new Set(r.rows.map((x) => x.castId)).size;
     setInfo(
-      `${casts}人 × ${md(from)}〜${md(to)}：同じ ${r.rows.filter((x) => x.same).length}件・違う ${r.rows.filter((x) => !x.same).length}件` +
+      `${casts}人 × ${md(from)}〜${md(to)}：同じ ${r.rows.filter((x) => x.same).length}件・違う ${r.rows.filter((x) => !x.same && !x.special).length}件` +
+        (r.rows.some((x) => !x.same && x.special) ? `・データセンター側の特別表示 ${r.rows.filter((x) => !x.same && x.special).length}件（満枠など。上書きしません）` : "") +
         (r.unmatched.length ? `／データセンターにいてORBITで見つからない人：${r.unmatched.join("、")}` : "") +
         (r.notInFdc ? `／ORBITにいてデータセンターに出勤表がない人：${r.notInFdc}人（非公開など）` : ""),
     );
@@ -143,11 +145,14 @@ export function BulkSync() {
               </thead>
               <tbody>
                 {shown.map((r) => (
-                  <tr key={`${r.itemId}_${r.date}`} className={r.same ? "" : "bg-amber-500/10"}>
+                  <tr key={`${r.itemId}_${r.date}`} className={r.same ? "" : r.special ? "bg-zinc-800/50" : "bg-amber-500/10"}>
                     <td className="td tnum">{md(r.date)}</td>
                     <td className="td font-bold">{r.name}</td>
                     <td className="td tnum">{r.orbit ? r.orbit.label : <span className="text-zinc-500">未設定（送らない）</span>}</td>
-                    <td className="td tnum">{r.fdc.label || r.fdc.from}</td>
+                    <td className="td tnum">
+                      {r.fdc.label || r.fdc.from}
+                      {!r.same && r.special && <span className="ml-2 text-xs text-zinc-500">特別表示のため送りません</span>}
+                    </td>
                   </tr>
                 ))}
                 {shown.length === 0 && (

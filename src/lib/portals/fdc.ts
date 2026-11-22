@@ -136,6 +136,8 @@ export type PlanRow = {
   orbit: { from: string; to: string; label: string } | null; // null = ORBITで未設定（送らない）
   fdc: { from: string; to: string; label: string; freeText: string };
   same: boolean;
+  /** データセンター側で「満枠」「TEL確認」「未定」などの特別な表示にしている（上書きしない） */
+  special: boolean;
 };
 
 const addDay = (d: string, n: number) => new Date(Date.parse(`${d}T00:00:00Z`) + n * 86400_000).toISOString().slice(0, 10);
@@ -201,6 +203,7 @@ export async function fdcPlan(from: string, to: string): Promise<Res<{ rows: Pla
           orbit: want,
           fdc: { from: f.from, to: f.to, label: f.label, freeText: f.freeText },
           same: !want || (want.from === f.from && want.to === f.to),
+          special: /^(workKind|dayOffKind)/.test(f.from) || /^(workKind|dayOffKind)/.test(f.to) || f.from === "-",
         });
       }
     }
