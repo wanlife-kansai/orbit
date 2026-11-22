@@ -138,6 +138,30 @@ export class Fdc {
     return Math.floor(d / 7) + 1;
   }
 
+  /** 1週間分（当日から7日ずつ、week=1〜5）の全キャストの出勤。itemId → 日付 → 値 */
+  async readWeek(week: number): Promise<Map<string, Map<string, FdcDay>>> {
+    const out = new Map<string, Map<string, FdcDay>>();
+    for (let page = 1; page <= 5; page++) {
+      const html = await this.weekPage(week, page);
+      const before = out.size;
+      // セルごとに切り分けてから読む（ページ全体は約2MBあるため）
+      const parts = html.split('id="scheduleDataTd_');
+      for (const seg of parts.slice(1)) {
+        const m = /^(\d+)_(\d{4}-\d{2}-\d{2})"/.exec(seg);
+        if (!m) continue;
+        const [, itemId, date] = m;
+        const key = `${itemId}_${date}`;
+        const cell = new RegExp(`id="scheduleDataAnchor_${key}"[^>]*>([\\s\\S]*?)</a>`).exec(seg);
+        const free = new RegExp(`<textarea[^>]*id="freeText_${key}"[^>]*>([\\s\\S]*?)</textarea>`).exec(seg);
+        const day: FdcDay = { date, from: selected(seg, `from_${key}`) ?? "--", to: selected(seg, `to_${key}`) ?? "--", label: cell ? text(cell[1]) : "", freeText: free ? text(free[1]) : "" };
+        if (!out.has(itemId)) out.set(itemId, new Map());
+        out.get(itemId)!.set(date, day);
+      }
+      if (out.size === before || !/goPage\(\s*\d+\s*\)/.test(html)) break;
+    }
+    return out;
+  }
+
   async readDay(itemId: string, date: string, today: string): Promise<FdcDay> {
     const week = Fdc.weekOf(date, today);
     if (!week) throw new FdcError(`${date} は風俗データセンターで編集できる範囲（当日〜35日）の外です`, "内容");

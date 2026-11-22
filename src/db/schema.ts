@@ -306,3 +306,19 @@ export const aiGenerations = pgTable("ai_generations", {
   output: text("output").notNull().default(""),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
+
+// 公式サイト連動（風俗データセンター）で送る前の値。ボタン1つで元に戻すため
+export const fdcSnapshots = pgTable("fdc_snapshots", {
+  id: serial("id").primaryKey(),
+  shopId: integer("shop_id").notNull(),
+  batch: text("batch").notNull(),
+  castId: integer("cast_id").notNull(),
+  itemId: text("item_id").notNull(),
+  date: text("date").notNull(),
+  fromValue: text("from_value").notNull(),
+  toValue: text("to_value").notNull(),
+  freeText: text("free_text").notNull().default(""),
+  label: text("label").notNull().default(""),
+  restored: boolean("restored").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});

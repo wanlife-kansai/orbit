@@ -267,6 +267,23 @@ ALTER TABLE cast_photos ADD COLUMN IF NOT EXISTS source_ref text NOT NULL DEFAUL
 ALTER TABLE templates ADD COLUMN IF NOT EXISTS source_ref text NOT NULL DEFAULT '';
 ALTER TABLE contents ADD COLUMN IF NOT EXISTS source_ref text NOT NULL DEFAULT '';
 CREATE INDEX IF NOT EXISTS casts_shop_source ON casts (shop_id, source_ref);
+
+-- 公式サイト連動（風俗データセンター）：送る前の値（元に戻す用）
+CREATE TABLE IF NOT EXISTS fdc_snapshots (
+  id serial PRIMARY KEY,
+  shop_id integer NOT NULL,
+  batch text NOT NULL,
+  cast_id integer NOT NULL,
+  item_id text NOT NULL,
+  date text NOT NULL,
+  from_value text NOT NULL,
+  to_value text NOT NULL,
+  free_text text NOT NULL DEFAULT '',
+  label text NOT NULL DEFAULT '',
+  restored boolean NOT NULL DEFAULT false,
+  created_at timestamp NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS fdc_snapshots_batch ON fdc_snapshots (shop_id, batch);
 `;
 
 import { ALL_SITES } from "../lib/sites";

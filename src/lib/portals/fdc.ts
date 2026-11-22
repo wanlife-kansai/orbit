@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { currentShopId, getShop } from "@/lib/shop";
 import { decrypt } from "@/lib/secret";
@@ -122,4 +122,166 @@ export async function fdcRestoreDay(castId: number, date: string, before: { from
   } catch (e) {
     return fail(e);
   }
+}
+
+/* ───────── キャスト全員・期間まとめて ───────── */
+
+const { fdcSnapshots } = schema;
+
+export type PlanRow = {
+  castId: number;
+  name: string;
+  itemId: string;
+  date: string;
+  orbit: { from: string; to: string; label: string } | null; // null = ORBITで未設定（送らない）
+  fdc: { from: string; to: string; label: string; freeText: string };
+  same: boolean;
+};
+
+const addDay = (d: string, n: number) => new Date(Date.parse(`${d}T00:00:00Z`) + n * 86400_000).toISOString().slice(0, 10);
+
+/** 当日〜35日の範囲の、全員分の「ORBIT」と「データセンター」を並べる（読むだけ） */
+export async function fdcPlan(from: string, to: string): Promise<Res<{ rows: PlanRow[]; unmatched: string[]; notInFdc: number }>> {
+  try {
+    const shop = await getShop();
+    const shopId = shop.id;
+    const { fdc, portalId } = await connect();
+    const t = await today();
+    if (from < t) from = t;
+    const last = addDay(t, 34);
+    if (to > last) to = last;
+    if (to < from) return { ok: false, message: "期間が正しくありません（当日〜35日先まで）" };
+
+    // データセンターのキャスト ↔ ORBITの女性（名前で照合し、覚えておく）
+    const items = await fdc.listItems();
+    const castRows = await db.select({ id: casts.id, name: casts.name }).from(casts).where(eq(casts.shopId, shopId));
+    const maps = await db.select().from(castPortalMap).where(and(eq(castPortalMap.shopId, shopId), eq(castPortalMap.portalId, portalId)));
+    const byItem = new Map(maps.map((m) => [m.remoteId, m.castId]));
+    const unmatched: string[] = [];
+    for (const it of items) {
+      if (byItem.has(it.itemId)) continue;
+      const hit = castRows.filter((c) => norm(c.name) === norm(it.name));
+      if (hit.length !== 1) {
+        unmatched.push(it.name);
+        continue;
+      }
+      byItem.set(it.itemId, hit[0].id);
+      await db
+        .insert(castPortalMap)
+        .values({ shopId, castId: hit[0].id, portalId, remoteId: it.itemId })
+        .onConflictDoUpdate({ target: [castPortalMap.castId, castPortalMap.portalId], set: { remoteId: it.itemId } });
+    }
+    const nameOf = new Map(castRows.map((c) => [c.id, c.name]));
+
+    // データセンター：必要な週だけ読む
+    const weeks = new Set<number>();
+    for (let d = from; d <= to; d = addDay(d, 1)) weeks.add(Fdc.weekOf(d, t)!);
+    const fdcVals = new Map<string, FdcDay>();
+    for (const w of weeks) for (const [itemId, days] of await fdc.readWeek(w)) for (const [date, v] of days) fdcVals.set(`${itemId}_${date}`, v);
+
+    // ORBIT：期間内の出勤
+    const castIds = [...byItem.values()];
+    const sch = castIds.length
+      ? await db.select().from(schedules).where(and(eq(schedules.shopId, shopId), inArray(schedules.castId, castIds), gte(schedules.date, from), lte(schedules.date, to)))
+      : [];
+    const orbitOf = new Map(sch.map((x) => [`${x.castId}_${x.date}`, x]));
+
+    const rows: PlanRow[] = [];
+    for (const [itemId, castId] of byItem) {
+      for (let d = from; d <= to; d = addDay(d, 1)) {
+        const f = fdcVals.get(`${itemId}_${d}`);
+        if (!f) continue;
+        const o = orbitOf.get(`${castId}_${d}`);
+        const want = !o ? null : o.off ? { from: "--", to: "--", label: "お休み" } : { ...toFdcTimes(o.start, o.end, shop.dayChangeHour), label: `${o.start}〜${o.end}` };
+        rows.push({
+          castId,
+          name: nameOf.get(castId) ?? "",
+          itemId,
+          date: d,
+          orbit: want,
+          fdc: { from: f.from, to: f.to, label: f.label, freeText: f.freeText },
+          same: !want || (want.from === f.from && want.to === f.to),
+        });
+      }
+    }
+    rows.sort((a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name, "ja"));
+    return { ok: true, rows, unmatched, notInFdc: castRows.length - byItem.size };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+/** 違うところを送る（何件でも。画面から少しずつ呼ぶ）。送る前の値は batch に保存 */
+export async function fdcSendMany(
+  batch: string,
+  items: { castId: number; itemId: string; date: string; before: { from: string; to: string; freeText: string; label: string } }[],
+): Promise<Res<{ results: { castId: number; date: string; ok: boolean; shown: string }[] }>> {
+  let portalId = 0;
+  try {
+    const shop = await getShop();
+    const c = await connect();
+    portalId = c.portalId;
+    const results = [];
+    for (const it of items.slice(0, 40)) {
+      const [s] = await db.select().from(schedules).where(and(eq(schedules.castId, it.castId), eq(schedules.date, it.date), eq(schedules.shopId, shop.id)));
+      if (!s) {
+        results.push({ castId: it.castId, date: it.date, ok: false, shown: "ORBITで未設定のため送りません" });
+        continue;
+      }
+      const { from, to } = s.off ? { from: "--", to: "--" } : toFdcTimes(s.start, s.end, shop.dayChangeHour);
+      await db.insert(fdcSnapshots).values({
+        shopId: shop.id, batch, castId: it.castId, itemId: it.itemId, date: it.date,
+        fromValue: it.before.from, toValue: it.before.to, freeText: it.before.freeText, label: it.before.label,
+      });
+      try {
+        const shown = await c.fdc.writeDay(it.itemId, it.date, from, to, it.before.freeText);
+        results.push({ castId: it.castId, date: it.date, ok: true, shown });
+      } catch (e) {
+        results.push({ castId: it.castId, date: it.date, ok: false, shown: e instanceof Error ? e.message : String(e) });
+      }
+    }
+    const ok = results.filter((r) => r.ok).length;
+    await log(portalId, ok === results.length, `風俗データセンター 出勤まとめて送信（${batch}）：${ok}/${results.length}件`, ok === results.length ? "" : "内容");
+    return { ok: true, results };
+  } catch (e) {
+    if (portalId) await log(portalId, false, `風俗データセンター 出勤まとめて送信：${e instanceof Error ? e.message : e}`, e instanceof FdcError ? e.kind : "接続");
+    return fail(e);
+  }
+}
+
+/** まとめて送った分を、送る前の値に戻す（画面から少しずつ呼ぶ。残り件数を返す） */
+export async function fdcRestoreMany(batch: string): Promise<Res<{ done: number; left: number }>> {
+  try {
+    const shopId = await currentShopId();
+    const { fdc, portalId } = await connect();
+    const rows = await db
+      .select()
+      .from(fdcSnapshots)
+      .where(and(eq(fdcSnapshots.shopId, shopId), eq(fdcSnapshots.batch, batch), eq(fdcSnapshots.restored, false)))
+      .limit(40);
+    for (const r of rows) {
+      await fdc.writeDay(r.itemId, r.date, r.fromValue, r.toValue, r.freeText);
+      await db.update(fdcSnapshots).set({ restored: true }).where(eq(fdcSnapshots.id, r.id));
+    }
+    const [{ n }] = await db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(fdcSnapshots)
+      .where(and(eq(fdcSnapshots.shopId, shopId), eq(fdcSnapshots.batch, batch), eq(fdcSnapshots.restored, false)));
+    if (rows.length) await log(portalId, true, `風俗データセンター 出勤を元に戻す（${batch}）：${rows.length}件`);
+    return { ok: true, done: rows.length, left: n };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+/** これまでの「まとめて送信」（元に戻せるもの） */
+export async function fdcBatches() {
+  const shopId = await currentShopId();
+  return db
+    .select({ batch: fdcSnapshots.batch, n: sql<number>`count(*)::int`, left: sql<number>`count(*) filter (where not ${fdcSnapshots.restored})::int`, at: sql<string>`min(${fdcSnapshots.createdAt})::text` })
+    .from(fdcSnapshots)
+    .where(eq(fdcSnapshots.shopId, shopId))
+    .groupBy(fdcSnapshots.batch)
+    .orderBy(sql`min(${fdcSnapshots.createdAt}) desc`)
+    .limit(10);
 }
