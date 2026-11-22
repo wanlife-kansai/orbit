@@ -601,28 +601,34 @@ export async function importContentDetail(s: VenreySession, shopId: number, base
     if (setting.TimerInterval) v.intervalMin = Math.max(1, Math.round(setting.TimerInterval / 60));
     v.loop = setting.IsLoopPost;
   }
-  if (style === 0) {
+  // 更新方法の名前で振り分ける（「テンプレートなし」は文面なしで、間隔・時刻だけ写す）
+  const isDirect = style === 0 || /直接入力/.test(styleName);
+  const isInterval = /間隔指定/.test(styleName);
+  const isTimes = /時間指定|詳細設定/.test(styleName);
+  if (isDirect) {
     v.mode = "direct";
     v.entries = d.SimplePostTemplateList.filter((t) => str(t.Title1) || str(t.Comment1)).map((t) => {
       if (t.ImagePathMain) images++;
       return { title: str(t.Title1), body: str(t.Comment1) };
     });
-  } else if (style === 1) {
-    v.mode = "timer";
-    v.entries = (await Promise.all(details.map(entryOf))).filter((e): e is NonNullable<typeof e> => !!e);
-  } else {
-    // 時間指定・詳細設定：時刻ごとの投稿（詳細設定は最初の週のパターンだけ）
+  } else if (isTimes) {
+    // 時間指定・詳細設定：時刻ごとの投稿（詳細設定は最初の週のパターンだけ）。文面がない時刻も残す
     v.mode = "times";
     const firstWeek = details.filter((x) => (x.WeekTabId ?? 0) === (details[0]?.WeekTabId ?? 0));
     const times = [];
     for (const x of firstWeek) {
-      const e = await entryOf(x);
-      if (e && x.Hour !== null) times.push({ at: `${String(x.Hour).padStart(2, "0")}:${String(x.Min ?? 0).padStart(2, "0")}`, entry: e });
+      if (x.Hour === null) continue;
+      const e = (await entryOf(x)) ?? { title: "", body: "" };
+      times.push({ at: `${String(x.Hour).padStart(2, "0")}:${String(x.Min ?? 0).padStart(2, "0")}`, entry: e });
     }
-    v.times = times;
+    v.times = times.sort((a, b) => a.at.localeCompare(b.at));
+  } else {
+    // 間隔指定（テンプレートなしを含む）・その他（即姫タイマーなど）は間隔で回す
+    v.mode = "timer";
+    v.entries = isInterval ? (await Promise.all(details.map(entryOf))).filter((e): e is NonNullable<typeof e> => !!e) : [];
   }
   const note = [
-    `Venreyの更新方法：${styleName}${st?.IsStarted ? `（Venreyでは稼働中${d.NextUpdateDate ? `・次回 ${d.NextUpdateDate.replace("T", " ").slice(0, 16)}` : ""}）` : "（Venreyでは停止中）"}`,
+    `Venreyの更新方法：${/^\d+$/.test(styleName) ? `その他（番号${styleName}・間隔${v.intervalMin ?? "-"}分）` : styleName}${st?.IsStarted ? `（Venreyでは稼働中${d.NextUpdateDate ? `・次回 ${d.NextUpdateDate.replace("T", " ").slice(0, 16)}` : ""}）` : "（Venreyでは停止中）"}`,
     style === 5 ? "詳細設定（曜日・日付ごと）は最初のパターンだけを時刻指定として写しています" : "",
     images ? `画像 ${images}枚は写していません（Venrey側にあります）` : "",
   ].filter(Boolean);
