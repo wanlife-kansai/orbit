@@ -14,7 +14,7 @@ export function AddContents({ catalog }: { catalog: Site[] }) {
 
   return (
     <div className="mb-4">
-      <button className="btn-primary" onClick={() => setOpen(!open)}>{open ? "閉じる" : "＋ コンテンツを追加"}</button>
+      <button className="btn-primary" onClick={() => setOpen(!open)}>{open ? "閉じる" : "＋ 更新枠を追加"}</button>
       {open && (
         <div className="card mt-3 p-4">
           <div className="mb-3 flex flex-wrap items-center gap-3 text-sm">

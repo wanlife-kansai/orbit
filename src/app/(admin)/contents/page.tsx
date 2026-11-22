@@ -39,7 +39,7 @@ export default async function ContentsPage() {
     <>
       <PageHeader title="サイト更新の予約" desc="サイトごとの「速報」「上位化」「割引」などの枠を、タイマー・時刻指定・直接入力で更新します。">
         <a href="/logs?c=content" className="btn">配信の記録を見る</a>
-        <a href="/settings?tab=basic" className="btn">24時間更新の設定</a>
+        <a href="/settings?tab=basic" className="btn">更新してよい時間帯</a>
       </PageHeader>
       <AddContents catalog={catalog} />
       <ContentList items={items} kinds={[...KINDS]} />

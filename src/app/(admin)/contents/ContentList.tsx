@@ -37,7 +37,7 @@ export function ContentList({ items, kinds }: { items: Item[]; kinds: string[] }
     });
 
   if (!items.length)
-    return <div className="card p-6 text-sm text-zinc-400">まだコンテンツがありません。「＋ コンテンツを追加」から、更新したいサイトの枠を選んでください。</div>;
+    return <div className="card p-6 text-sm text-zinc-400">まだコンテンツがありません。「＋ 更新枠を追加」から、更新したいサイトの枠を選んでください。</div>;
 
   return (
     <>
@@ -51,13 +51,13 @@ export function ContentList({ items, kinds }: { items: Item[]; kinds: string[] }
             </button>
           ) : null;
         })}
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="コンテンツ名で検索" className="input ml-auto w-56" />
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="サイト名・枠の名前で探す" className="input ml-auto w-56" />
       </div>
       <div className="mb-2 flex flex-wrap items-center gap-2 text-sm">
         <span className="text-zinc-500">選択 {sel.length}件：</span>
-        <button className="btn" disabled={!sel.length || pending} onClick={() => run(() => setTimerAll(sel, true))}>まとめてタイマー開始</button>
+        <button className="btn" disabled={!sel.length || pending} onClick={() => run(() => setTimerAll(sel, true))}>選んだ枠の予約を開始</button>
         <button className="btn" disabled={!sel.length || pending} onClick={() => run(() => setTimerAll(sel, false))}>まとめて停止</button>
-        <button className="btn-danger" disabled={!sel.length || pending} onClick={() => confirm(`${sel.length}件を一覧から外します。よろしいですか？`) && run(async () => { await removeContents(sel); setSel([]); })}>選択削除</button>
+        <button className="btn-danger" disabled={!sel.length || pending} onClick={() => confirm(`${sel.length}件を一覧から外します。よろしいですか？`) && run(async () => { await removeContents(sel); setSel([]); })}>選んだ枠を削除</button>
         {msg && <span className="text-emerald-300">{msg}</span>}
       </div>
       {groups.map((g) => (
@@ -69,9 +69,9 @@ export function ContentList({ items, kinds }: { items: Item[]; kinds: string[] }
                 <th className="th w-8">
                   <input type="checkbox" checked={list.filter((i) => i.group === g).every((i) => sel.includes(i.id))} onChange={(e) => { const ids = list.filter((i) => i.group === g).map((i) => i.id); setSel((v) => (e.target.checked ? [...new Set([...v, ...ids])] : v.filter((x) => !ids.includes(x)))); }} />
                 </th>
-                <th className="th w-36">タイマー</th>
-                <th className="th">コンテンツ名</th>
-                <th className="th w-28">最終更新</th>
+                <th className="th w-36">次の更新</th>
+                <th className="th">サイトと枠</th>
+                <th className="th w-28">前回の更新</th>
                 <th className="th w-20">種別</th>
                 <th className="th w-40" />
               </tr>
