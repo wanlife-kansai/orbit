@@ -16,7 +16,7 @@ export default async function FdcPage() {
   return (
     <>
       <PageHeader
-        title="風俗データセンター 出勤連動テスト"
+        title="公式サイト連動"
         desc="1人・1日だけ、ORBITの出勤を風俗データセンター（まるごとHP）へ送って確かめます。送る前の値を覚えておき、ボタン1つで元に戻せます。自動配信にはまだつないでいません。"
       />
       <FdcTester casts={list} />
