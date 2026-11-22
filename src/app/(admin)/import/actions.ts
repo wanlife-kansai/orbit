@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { currentShopId, getShop } from "@/lib/shop";
 import { decrypt, encrypt } from "@/lib/secret";
-import { importContents, importGirl, importSchedules, importTemplates, listGirls, packSession, unpackSession, venreyLogin } from "@/lib/venrey";
+import { importAccounts, importContents, importGirl, importSchedules, importTemplates, listGirls, packSession, unpackSession, venreyLogin } from "@/lib/venrey";
 
 type R<T> = ({ ok: true } & T) | { ok: false; message: string };
 const fail = (e: unknown) => ({ ok: false as const, message: e instanceof Error ? e.message : String(e) });
@@ -55,7 +55,7 @@ export async function importGirlsStep(session: string, girlIds: number[]): Promi
   }
 }
 
-export async function importRestStep(session: string, what: "schedules" | "templates" | "contents"): Promise<R<{ message: string; detail?: string[] }>> {
+export async function importRestStep(session: string, what: "schedules" | "templates" | "contents" | "accounts"): Promise<R<{ message: string; detail?: string[] }>> {
   try {
     const s = unpackSession(session);
     const shopId = await currentShopId();
@@ -66,6 +66,14 @@ export async function importRestStep(session: string, what: "schedules" | "templ
       // 先月1日〜再来月末
       const r = await importSchedules(s, shopId, ymd(y, m - 1, 1), ymd(y, m + 3, 0));
       return { ok: true, message: `基本出勤 ${r.base}人、出勤・休み ${r.days}件` };
+    }
+    if (what === "accounts") {
+      const r = await importAccounts(s, shopId);
+      return {
+        ok: true,
+        message: `連動サイトのログイン情報 ${r.saved.length}/${r.total}件を登録（連動先サイト ${r.targets}件）`,
+        detail: [...r.skipped, ...r.unmatched.map((n) => `${n}（ORBITに対応するサイトがありません）`)],
+      };
     }
     if (what === "templates") return { ok: true, message: `テンプレート ${await importTemplates(s, shopId)}件` };
     const r = await importContents(s, shopId);

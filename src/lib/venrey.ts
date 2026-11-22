@@ -471,3 +471,57 @@ export async function importContents(s: VenreySession, shopId: number) {
   }
   return { total: r.ContentsList.length, matched, unmatched };
 }
+
+/* ───────── 連動しているサイト（ID・パスワード） ───────── */
+
+type VBaitai = { BaitaiCode: string; BaitaiName: string; IsOfficial: boolean; LoginId: string | null; LoginPasswd: string | null; ShopPageUrl: string | null; BaitaiMemo: string | null; LoginPageUrl: string | null };
+
+/**
+ * Venrey の「ID・PASS登録」にある各サイトのログイン情報を、ORBIT の「サイトのログイン情報」へ写す。
+ * パスワードはサーバーの中だけで暗号化して保存し、画面には出しません。
+ * オフィシャル（公式サイト）は風俗データセンターのログインなので「風俗データセンター（まるごとHP）」へ。すでに登録済みなら上書きしません。
+ * あわせて、写したサイトを店舗の「連動先サイト」にします。
+ */
+export async function importAccounts(s: VenreySession, shopId: number) {
+  const list = (await vget<VBaitai[]>(s, "baitaisettings")).filter((b) => b.LoginId);
+  const allPortals = await db.select().from(schema.portals);
+  const byCode = new Map(allPortals.map((p) => [p.code, p]));
+  const byName = new Map<string, string>();
+  for (const site of ALL_SITES) for (const v of [site.name, site.name.replace(/（[^（）]*）$/, "")]) byName.set(norm(v), site.code);
+
+  const saved: string[] = [];
+  const skipped: string[] = [];
+  const unmatched: string[] = [];
+  for (const b of list) {
+    const official = b.IsOfficial || b.BaitaiName.startsWith("オフィシャル");
+    const code = official ? "fdc" : byName.get(norm(b.BaitaiName));
+    const portal = code ? byCode.get(code) : undefined;
+    if (!portal) {
+      unmatched.push(b.BaitaiName);
+      continue;
+    }
+    const [cur] = await db
+      .select()
+      .from(schema.shopPortalAccounts)
+      .where(and(eq(schema.shopPortalAccounts.shopId, shopId), eq(schema.shopPortalAccounts.portalId, portal.id)));
+    if (official && cur?.loginId) {
+      skipped.push(`${portal.name}（登録済みのため上書きしません）`);
+      continue;
+    }
+    const v = {
+      loginId: b.LoginId ?? "",
+      passwordEnc: b.LoginPasswd ? encrypt(b.LoginPasswd) : cur?.passwordEnc ?? "",
+      memo: [b.BaitaiMemo, b.ShopPageUrl ? `掲載ページ：${b.ShopPageUrl}` : ""].filter(Boolean).join("\n").slice(0, 500) || cur?.memo || "",
+    };
+    if (cur) await db.update(schema.shopPortalAccounts).set(v).where(eq(schema.shopPortalAccounts.id, cur.id));
+    else await db.insert(schema.shopPortalAccounts).values({ shopId, portalId: portal.id, ...v });
+    saved.push(portal.name);
+  }
+
+  // 連動先サイト（各サイト項目のタブに出すサイト）を、写したサイトにそろえる
+  const known = new Set(SITE_FIELDS.map((x) => x.code));
+  const targets = [...new Set(list.map((b) => byName.get(norm(b.BaitaiName))).filter((c): c is string => !!c && known.has(c)))];
+  if (targets.length) await db.update(schema.shops).set({ targetSites: [...targets, "official"] }).where(eq(schema.shops.id, shopId));
+
+  return { total: list.length, saved, skipped, unmatched, targets: targets.length };
+}

@@ -8,7 +8,7 @@ export function ImportRunner({ savedId, hasSaved, lastImportAt, lastSummary }: {
   const [id, setId] = useState(savedId);
   const [pw, setPw] = useState("");
   const [remember, setRemember] = useState(true);
-  const [opts, setOpts] = useState({ girls: true, schedules: true, templates: true, contents: true });
+  const [opts, setOpts] = useState({ girls: true, schedules: true, templates: true, contents: true, accounts: true });
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [log, setLog] = useState<Line[]>([]);
@@ -75,6 +75,7 @@ export function ImportRunner({ savedId, hasSaved, lastImportAt, lastSummary }: {
         ["schedules", "出勤"],
         ["templates", "テンプレート"],
         ["contents", "コンテンツ枠"],
+        ["accounts", "連動サイトのログイン情報"],
       ] as const) {
         if (!opts[key] || stop.current) continue;
         add({ text: `${label}を取り込んでいます…`, tone: "dim" });
@@ -85,7 +86,7 @@ export function ImportRunner({ savedId, hasSaved, lastImportAt, lastSummary }: {
         }
         summary.push(r.message);
         add({ text: r.message, tone: "ok" });
-        if (r.detail?.length) add({ text: `ORBITに枠がないため未登録：${r.detail.join("、")}`, tone: "dim" });
+        if (r.detail?.length) add({ text: `${key === "accounts" ? "登録しなかったもの" : "ORBITに枠がないため未登録"}：${r.detail.join("、")}`, tone: "dim" });
       }
       await finishImport(summary.join("\n"));
       add({ text: stop.current ? "途中で止めました" : "取り込みが終わりました", tone: "ok" });
@@ -120,6 +121,7 @@ export function ImportRunner({ savedId, hasSaved, lastImportAt, lastSummary }: {
               ["schedules", "出勤（基本出勤＋先月〜再来月）"],
               ["templates", "テンプレート"],
               ["contents", "コンテンツ更新の枠（停止中で登録）"],
+              ["accounts", "連動しているサイトのログインID・パスワード（暗号化して保存）と連動先サイト"],
             ] as const
           ).map(([k, l]) => (
             <label key={k} className="flex items-start gap-2">
@@ -140,7 +142,7 @@ export function ImportRunner({ savedId, hasSaved, lastImportAt, lastSummary }: {
         </div>
         <p className="text-xs leading-relaxed text-zinc-400">
           何度実行しても重複しません（Mr.Venreyの内容で上書き）。ORBITで手で追加した女性・写真はそのままです。
-          ポータルのID・パスワードは取り込まないので、取り込んだだけでORBITからポータルへ配信されることはありません。
+          サイトのログイン情報を取り込んでも、サイト更新の予約は停止中のままなので、取り込んだだけでORBITからサイトへ配信されることはありません。
         </p>
         {lastImportAt && (
           <div className="rounded-md bg-zinc-800/60 p-3 text-xs text-zinc-300">
