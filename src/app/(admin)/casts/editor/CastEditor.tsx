@@ -13,11 +13,11 @@ import { QaTab } from "./QaTab";
 import { PhotoTab, type Photo } from "./PhotoTab";
 
 const TABS = [
-  { key: "basic", label: "基本情報" },
-  { key: "comment", label: "コメント" },
-  { key: "sites", label: "各サイト項目" },
-  { key: "qa", label: "Q&A項目" },
-  { key: "photo", label: "画像" },
+  { key: "basic", label: "プロフィール" },
+  { key: "comment", label: "紹介文" },
+  { key: "sites", label: "サイトごとの項目" },
+  { key: "qa", label: "質問と答え" },
+  { key: "photo", label: "写真" },
 ] as const;
 type Tab = (typeof TABS)[number]["key"];
 
@@ -124,7 +124,7 @@ export function CastEditor({
             setTab(t.key);
             top.current?.scrollIntoView({ behavior: "smooth", block: "start" });
           }}
-          className={`rounded-md px-4 py-2 text-sm ${tab === t.key ? "bg-violet-600 text-white" : "text-zinc-300 hover:bg-zinc-800"}`}
+          className={`border-b-[3px] px-3 py-2 text-sm font-bold ${tab === t.key ? "border-violet-600 text-zinc-100" : "border-transparent text-zinc-400 hover:text-zinc-100"}`}
         >
           {t.label}
           {t.key === "basic" && missing.length > 0 && <span className="ml-1.5 rounded-full bg-rose-600 px-1.5 text-[10px] text-white">{missing.length}</span>}
@@ -137,12 +137,13 @@ export function CastEditor({
     <div ref={top} className="scroll-mt-4">
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <Link href="/casts" className="text-xs text-zinc-400 hover:text-zinc-200">← 女性一覧</Link>
-          <h1 className="mt-1 text-xl font-semibold">女性プロフィール{castId ? "編集" : "登録"}{v.name ? ` - ${v.name}` : ""}</h1>
+          <Link href="/casts" className="text-xs font-bold text-zinc-400 hover:text-zinc-100">在籍一覧に戻る</Link>
+          <h1 className="mt-1 text-[26px] font-bold leading-tight">{v.name || (castId ? "名前未入力" : "新しい女性")}</h1>
+          <p className="text-xs text-zinc-500">{castId ? "プロフィールを編集しています" : "新しく登録します"}</p>
         </div>
         <div className="flex items-center gap-2">
           <button type="button" onClick={() => setShowMemo(!showMemo)} className="btn">
-            {v.memo ? "メモ ●" : "メモを登録"}
+            {v.memo ? "メモあり" : "メモを書く"}
           </button>
           <button type="button" onClick={save} disabled={pending} className="btn-primary min-w-28">
             {pending ? "保存中…" : "保存"}
@@ -152,17 +153,17 @@ export function CastEditor({
 
       {showMemo && (
         <div className="card mb-4 p-4">
-          <label className="label">メモ（管理用・サイトには出ません）</label>
+          <label className="label">スタッフ用メモ（サイトには出ません）</label>
           <textarea value={v.memo} onChange={(e) => set("memo", e.target.value)} rows={2} className="input w-full" />
         </div>
       )}
 
-      <div className="sticky top-0 z-20 -mx-4 mb-4 border-b border-zinc-800 bg-zinc-950/95 px-4 py-2 backdrop-blur md:-mx-8 md:px-8">
+      <div className="sticky top-[104px] z-20 -mx-4 mb-5 border-b border-zinc-700/70 bg-zinc-950/95 px-4 backdrop-blur md:-mx-8 md:px-8">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <TabBar />
           <div className="flex items-center gap-3">
             {msg && <span className={`text-sm ${msg.ok ? "text-emerald-300" : "text-rose-400"}`}>{msg.text}</span>}
-            {dirty && !msg && <span className="text-xs text-amber-300">未保存の変更があります</span>}
+            {dirty && !msg && <span className="text-xs font-bold text-amber-300">保存していない変更があります</span>}
             <button type="button" onClick={save} disabled={pending} className="btn-primary">
               {pending ? "保存中…" : "保存"}
             </button>
@@ -181,12 +182,12 @@ export function CastEditor({
 
         <aside className="xl:sticky xl:top-20 xl:self-start">
           <div className="card p-4">
-            <h2 className="text-sm font-semibold">必須項目チェッカー</h2>
+            <h2 className="text-sm font-bold">入力のこり</h2>
             {missing.length === 0 ? (
-              <p className="mt-2 text-sm text-emerald-300">基本情報の必須項目はすべて入力済みです</p>
+              <p className="mt-2 text-sm text-emerald-300">必須の項目はすべて入っています</p>
             ) : (
               <div className="mt-2">
-                <p className="text-xs text-rose-300">未入力の必須項目：{missing.length}件</p>
+                <p className="text-xs text-rose-300">まだ入っていない必須項目：{missing.length}件</p>
                 <div className="mt-1.5 flex flex-wrap gap-1">
                   {missing.map((m) => (
                     <button type="button" key={m.key} onClick={() => setTab("basic")} className="rounded bg-rose-950/60 px-1.5 py-0.5 text-[11px] text-rose-200 ring-1 ring-rose-900">

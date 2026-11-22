@@ -121,9 +121,9 @@ export function Sidebar({ shopName, shopCode, master = false }: { shopName: stri
         <Link href="/" aria-label="ホーム" className="mb-8">
           <LogoMark size={34} />
         </Link>
-        <nav className="relative flex flex-1 flex-col items-center gap-7" aria-label="仕事場">
+        <nav className="relative flex flex-col items-center gap-7" aria-label="仕事場">
           {/* 軌道：5つの仕事場をつなぐ1本の線 */}
-          <span aria-hidden className="absolute left-1/2 top-3 bottom-8 w-px -translate-x-1/2 bg-zinc-700" />
+          <span aria-hidden className="absolute left-1/2 top-6 bottom-10 w-px -translate-x-1/2 bg-zinc-700" />
           {SPACES.map((s) => {
             const on = s.key === cur;
             return (
@@ -145,6 +145,7 @@ export function Sidebar({ shopName, shopCode, master = false }: { shopName: stri
             );
           })}
         </nav>
+        <div className="flex-1" />
         <div className="flex flex-col items-center gap-3">
           <ThemeToggle />
           <a href="/logout" className="text-[11px] text-zinc-500 hover:text-zinc-200">ログアウト</a>

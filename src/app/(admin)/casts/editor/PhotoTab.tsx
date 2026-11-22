@@ -137,8 +137,8 @@ export function PhotoTab({ castId, photos, onPhotos }: { castId: number | null; 
   }
   return (
     <div className="space-y-4">
-      <Section kind="thumb" title="サムネイル画像" note="サムネイルを指定したい場合はこちらにアップロードしてください。未登録なら「画像」の1枚目を使います。" max={THUMB_MAX} photos={photos} castId={castId} onPhotos={onPhotos} />
-      <Section kind="photo" title="画像" note="プロフィールの写真。1枚目がメインになります。画像はドロップでも追加できます（JPEG・PNG・WebP・GIF、1枚10MBまで）。" max={PHOTO_MAX} photos={photos} castId={castId} onPhotos={onPhotos} />
+      <Section kind="thumb" title="一覧用の写真（サムネイル）" note="サムネイルを指定したい場合はこちらにアップロードしてください。未登録なら「画像」の1枚目を使います。" max={THUMB_MAX} photos={photos} castId={castId} onPhotos={onPhotos} />
+      <Section kind="photo" title="プロフィール写真" note="プロフィールの写真。1枚目がメインになります。画像はドロップでも追加できます（JPEG・PNG・WebP・GIF、1枚10MBまで）。" max={PHOTO_MAX} photos={photos} castId={castId} onPhotos={onPhotos} />
     </div>
   );
 }
