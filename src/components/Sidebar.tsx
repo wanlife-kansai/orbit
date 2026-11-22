@@ -14,6 +14,7 @@ const GROUPS: { title: string; items: Item[] }[] = [
       { href: "/accounts", label: "ID・PASS登録" },
       { href: "/portals", label: "公式サイト連携" },
       { href: "/import", label: "Mr.Venreyから取り込み" },
+      { href: "/portals/fdc", label: "データセンター連動テスト" },
     ],
   },
   {

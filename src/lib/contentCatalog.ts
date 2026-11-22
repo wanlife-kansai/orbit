@@ -57,7 +57,8 @@ export const EXTRA_SITES: { code: string; name: string }[] = [
     "name": "駅ちか！風俗求人ココア（求人）"
   },
   { "code": "30baito", "name": "30からの風俗アルバイト【関西版】（求人）" },
-  { "code": "ctiv2", "name": "CTIv2" }
+  { "code": "ctiv2", "name": "CTIv2" },
+  { "code": "fdc", "name": "風俗データセンター（まるごとHP）" }
 ];
 
 export const CATALOG: CatalogItem[] = [
